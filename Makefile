@@ -11,7 +11,7 @@ GATEWAY ?= gateway
 
 .PHONY: build
 build:
-	go build -o  binaries/$(GATEWAY) ./cmd/trcli/*.go
+	go build -o  binaries/$(GATEWAY) .
 
 docker: build
 	cp binaries/$(GATEWAY) . && docker build -t gateway
