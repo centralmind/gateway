@@ -21,7 +21,9 @@ jobs:
           go-version: "1.23.6"
       - shell: bash
         run: |
-          go mod tidy
+          go mod download
+      - shell: bash
+        run: |
           make build
 
   e2e-tests:
@@ -42,6 +44,9 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: "1.23.6"
+      - shell: bash
+        run: |
+          go mod download
       - shell: bash
         run: |
           go install gotest.tools/gotestsum@latest
