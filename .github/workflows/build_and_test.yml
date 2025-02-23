@@ -1,0 +1,78 @@
+name: Run Build and Test
+
+on:
+  push:
+    branches:
+      - "main"
+  pull_request:
+    branches:
+      - "*"
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.6"
+      - shell: bash
+        run: |
+          make build
+
+  e2e-tests:
+    needs: build
+    name: e2e / ${{ matrix.suite.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [
+          { group: "connectors", name: "clickhouse", path: "clickhouse" },
+          { group: "connectors", name: "postgres", path: "postgres" },
+        ]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.6"
+      - shell: bash
+        run: |
+          go install gotest.tools/gotestsum@latest
+      - shell: bash
+        run: |
+          make run-tests SUITE_GROUP="${{ matrix.suite.group }}" SUITE_PATH="${{ matrix.suite.path }}" SUITE_NAME="${{ matrix.suite.name }}"
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-reports-${{ matrix.suite.name }}
+          path: reports/*.xml
+      - name: Fail if tests failed
+        if: failure()
+        run: exit 1
+
+  test-report:
+    needs: [e2e-tests]
+    name: test-report
+    if: always() && !contains(needs.*.result, 'skipped')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Download All Test Reports
+        uses: actions/download-artifact@v4
+        with:
+          pattern: test-reports-*
+          merge-multiple: true
+          path: reports/
+      - name: Test Summary
+        uses: test-summary/action@v2
+        if: always()
+        with:
+          paths: "reports/*.xml"
