@@ -21,6 +21,7 @@ jobs:
           go-version: "1.23.6"
       - shell: bash
         run: |
+          go mod tidy
           make build
 
   e2e-tests:
