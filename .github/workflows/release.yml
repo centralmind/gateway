@@ -1,0 +1,53 @@
+on:
+  workflow_call:
+    inputs:
+      extra_args:
+        description: Extra args for go-releaser, for example '--snapshot'
+        required: false
+        type: string
+      version:
+        description: Version of base image
+        required: true
+        type: string
+permissions: {}
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: centralmind/gateway
+jobs:
+  build-and-push-image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Dump version
+        run: |
+          echo "${{ inputs }}"
+          echo "${{ inputs.version }}"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          image: tonistiigi/binfmt:qemu-v7.0.0-28
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@343f7c4344506bcbf9b4de18042ae17996df046d # @v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: latest
+          args: release --clean ${{ inputs.extra_args }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
