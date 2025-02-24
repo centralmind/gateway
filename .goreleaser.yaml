@@ -1,0 +1,62 @@
+version: 2
+project_name: "gateway"
+
+before:
+  hooks:
+    - go mod tidy
+    - go generate ./...
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    main: .
+    binary: gateway
+
+archives:
+  - formats: ["tar.gz"]
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Os }}_
+      {{- .Arch }}
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+
+release:
+  github:
+    owner: "centralmind"
+    name: "gateway"
+
+  name_template: "{{.ProjectName}}-v{{.Version}}"
+
+dockers:
+  - image_templates:
+      - "ghcr.io/centralmind/gateway:{{.Version}}-amd64"
+    goos: linux
+    goarch: amd64
+    use: buildx
+    dockerfile: Dockerfile
+    build_flag_templates:
+      - "--platform=linux/amd64"
+  - image_templates:
+      - "ghcr.io/centralmind/gateway:{{.Version}}-arm64"
+    goos: linux
+    goarch: arm64
+    use: buildx
+    dockerfile: Dockerfile
+    build_flag_templates:
+      - "--platform=linux/arm64"
+docker_manifests:
+  - name_template: "ghcr.io/centralmind/gateway:{{.Version}}"
+    image_templates:
+      - "ghcr.io/centralmind/gateway:{{.Version}}-amd64"
+      - "ghcr.io/centralmind/gateway:{{.Version}}-arm64"
