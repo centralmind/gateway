@@ -1,6 +1,6 @@
 image:
   repository: ghcr.io/centralmind/gateway
-  tag: "latest"
+  tag: "0.0.0-rc3"
 
 imagePullSecrets:
  - name: ghcr-secret
