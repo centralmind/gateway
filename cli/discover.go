@@ -78,7 +78,7 @@ func init() {
 func Discover(configPath *string) *cobra.Command {
 	var databaseType string
 	var tables []string
-	var openAPIKey string
+	var aiAPIKey string
 	var output string
 	var extraPrompt string
 	cmd := &cobra.Command{
@@ -172,7 +172,7 @@ func Discover(configPath *string) *cobra.Command {
 			logrus.Info("\r\n")
 			// Call API
 			logrus.Info("Step 5: Using AI to design API")
-			config, resp, err := callOpenAI(openAPIKey, fullPrompt)
+			config, resp, err := callOpenAI(aiAPIKey, fullPrompt)
 			if err != nil {
 				logrus.Error("failed to call OpenAI:", err)
 				return err
@@ -236,7 +236,7 @@ func Discover(configPath *string) *cobra.Command {
 	}
 	cmd.Flags().StringSliceVar(&tables, "tables", nil, "List of table to include")
 	cmd.Flags().StringVar(&databaseType, "db-type", "postgres", "Type of database")
-	cmd.Flags().StringVar(&openAPIKey, "open-ai-key", "open-ai-key", "OpenAI token")
+	cmd.Flags().StringVar(&aiAPIKey, "ai-api-key", "ai-api-key", "AI API token")
 	cmd.Flags().StringVar(&output, "output", "gateway.yaml", "Resulted yaml path")
 	cmd.Flags().StringVar(&extraPrompt, "prompt", "generate reasonable set of API-s for this data", "Custom input to generate API-s")
 	return cmd

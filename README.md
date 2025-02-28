@@ -74,7 +74,7 @@ To generate your gateway config simply run discover command with your connection
       discover \
       --db-type postgres \
       --tables table_name_1 --tables table_name_2 \ 
-      --open-ai-key $TOKEN \
+      --ai-api-key $TOKEN \
       --prompt "Generate for me awesome readonly api"
    ```
 3. Wait for completion
