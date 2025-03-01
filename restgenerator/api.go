@@ -59,7 +59,7 @@ func New(
 }
 
 // RegisterRoutes registers Rest endpoints.
-func (r *Rest) RegisterRoutes(mux *http.ServeMux, addresses ...string) error {
+func (r *Rest) RegisterRoutes(mux *http.ServeMux, disableSwagger bool, addresses ...string) error {
 	if err := plugins.Routes(r.Schema.Plugins, mux); err != nil {
 		return xerrors.Errorf("unable to register plugin routes: %w", err)
 	}
@@ -74,7 +74,10 @@ func (r *Rest) RegisterRoutes(mux *http.ServeMux, addresses ...string) error {
 		return xerrors.Errorf("unable to build swagger: %w", err)
 	}
 
-	mux.Handle("/swagger/", http.StripPrefix("/swagger", swaggerator.Handler(raw)))
+	if !disableSwagger {
+		mux.Handle("/swagger/", http.StripPrefix("/swagger", swaggerator.Handler(raw)))
+	}
+	
 	d := gin.Default()
 	for _, table := range r.Schema.Database.Tables {
 		for _, endpoint := range table.Endpoints {
@@ -82,10 +85,15 @@ func (r *Rest) RegisterRoutes(mux *http.ServeMux, addresses ...string) error {
 		}
 	}
 
-	// Add redirect from root to swagger UI
+	// Add redirect from root to swagger UI only if swagger is enabled
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "" || r.URL.Path == "/" {
-			http.Redirect(w, r, "/swagger/", http.StatusFound)
+			if !disableSwagger {
+				http.Redirect(w, r, "/swagger/", http.StatusFound)
+				return
+			}
+			// If swagger is disabled, return 404 for root path
+			http.NotFound(w, r)
 			return
 		}
 		d.Handler().ServeHTTP(w, r)

@@ -14,7 +14,7 @@ import (
 )
 
 func REST(configPath *string, addr *string, servers *string) *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "rest",
 		Short: "REST gateway",
 		Args:  cobra.MatchAll(cobra.ExactArgs(0)),
@@ -49,13 +49,23 @@ func REST(configPath *string, addr *string, servers *string) *cobra.Command {
 				serverAddresses = append(serverAddresses, fmt.Sprintf("http://localhost%s", *addr))
 			}
 
-			// Register routes with all server addresses
-			if err := a.RegisterRoutes(mux, serverAddresses...); err != nil {
+			// Get disable-swagger flag value
+			disableSwagger, _ := cmd.Flags().GetBool("disable-swagger")
+
+			// Register routes with all server addresses and disable-swagger flag
+			if err := a.RegisterRoutes(mux, disableSwagger, serverAddresses...); err != nil {
 				return err
 			}
 
-			logrus.Infof("docs here: %s/", serverAddresses[0])
+			if !disableSwagger {
+				logrus.Infof("docs here: %s/", serverAddresses[0])
+			}
 			return http.ListenAndServe(*addr, mux)
 		},
 	}
+
+	// Add disable-swagger flag to the rest command
+	cmd.Flags().Bool("disable-swagger", false, "disable Swagger UI")
+
+	return cmd
 }
