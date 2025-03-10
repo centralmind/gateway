@@ -34,6 +34,8 @@ jobs:
           { group: "connectors", name: "clickhouse", path: "clickhouse" },
           { group: "connectors", name: "postgres", path: "postgres" },
           { group: "connectors", name: "mysql", path: "mysql" },
+          { group: "connectors", name: "snowflake", path: "snowflake" },
+          { group: "connectors", name: "bigquery", path: "bigquery" },
           { group: "plugins", name: "plugins", path: "..." },
           { group: "mcp", name: "mcp", path: "..." },
           { group: "server", name: "server", path: "..." },

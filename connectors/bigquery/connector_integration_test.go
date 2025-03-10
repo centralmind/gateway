@@ -57,6 +57,7 @@ func TestConnector_Integration(t *testing.T) {
 	})
 
 	t.Run("discovery", func(t *testing.T) {
+		t.Skip("TODO: implement discovery test-container")
 		tables, err := connector.Discovery(ctx)
 		require.NoError(t, err)
 		require.Len(t, tables, 1)
