@@ -18,6 +18,7 @@ MySQL connector allows querying MySQL/MariaDB databases.
 ## Config example:
 
 ```yaml
+type: mysql
 host: localhost
 database: mydb
 user: root

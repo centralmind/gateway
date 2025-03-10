@@ -20,6 +20,7 @@ PostgreSQL connector allows querying PostgreSQL databases.
 ## Config example:
 
 ```yaml
+type: postgres
 hosts: 
   - localhost
 database: mydb

@@ -116,7 +116,6 @@ gateway verify [flags]
 
 - `--config` - Path to connection YAML file (default: "connection.yaml")
 - `--tables` - Comma-separated list of tables to include (e.g. 'table1,table2,table3')
-- `--db-type` - Type of database (default: "postgres")
 - `--llm-log` - Path to save the raw LLM response (default: logs directory)
 
 ## Configuration File

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/centralmind/gateway/logger"
 	"github.com/centralmind/gateway/model"
+	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
 	"strings"
@@ -19,7 +20,6 @@ import (
 
 func Connection() *cobra.Command {
 	var configPath string
-	var databaseType string
 	var tables string
 	var samplePath string
 
@@ -38,7 +38,7 @@ func Connection() *cobra.Command {
 				return err
 			}
 
-			tablesData, err := loadTablesData(splitTables(tables), configRaw, databaseType)
+			tablesData, err := loadTablesData(splitTables(tables), configRaw)
 			if err != nil {
 				return xerrors.Errorf("unable to verify connection: %w", err)
 			}
@@ -59,7 +59,6 @@ func Connection() *cobra.Command {
 
 	cmd.Flags().StringVar(&configPath, "config", "connection.yaml", "Path to connection yaml file")
 	cmd.Flags().StringVar(&tables, "tables", "", "Comma-separated list of tables to include (e.g. 'table1,table2,table3')")
-	cmd.Flags().StringVar(&databaseType, "db-type", "postgres", "Type of database")
 	cmd.Flags().StringVar(&samplePath, "llm-log", filepath.Join(logger.DefaultLogDir(), "sample.yaml"), "Path to save the raw LLM response")
 
 	return cmd
@@ -77,14 +76,18 @@ func splitTables(tables string) []string {
 	return tablesList
 }
 
-func loadTablesData(tablesList []string, configRaw any, databaseType string) ([]TableData, error) {
+type dbType struct {
+	Type string `yaml:"type" json:"type"`
+}
+
+func loadTablesData(tablesList []string, configRaw any) ([]TableData, error) {
 	logrus.Info("Step 1: Read configs")
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
-	connector, err := connectors.New(databaseType, configRaw)
+	connector, err := connectors.New(inferType(configRaw), configRaw)
 	if err != nil {
-		return nil, xerrors.Errorf("unable to create connector: %s: %w", databaseType, err)
+		return nil, xerrors.Errorf("unable to create connector: %s: %w", inferType(configRaw), err)
 	}
 	logrus.Info("✅ Step 1 completed. Done.")
 	logrus.Info("\r\n")
@@ -152,6 +155,21 @@ func loadTablesData(tablesList []string, configRaw any, databaseType string) ([]
 	logrus.Info("✅ Step 3 completed. Done.")
 	logrus.Info("\r\n")
 	return tablesToGenerate, nil
+}
+
+func inferType(configRaw any) string {
+	var typ dbType
+	switch v := configRaw.(type) {
+	case string:
+		if err := yaml.Unmarshal([]byte(v), &typ); err != nil {
+			return "unknown"
+		}
+	case []byte:
+		if err := yaml.Unmarshal(v, &typ); err != nil {
+			return "unknown"
+		}
+	}
+	return typ.Type
 }
 
 func printTableSchema(table TableData) {

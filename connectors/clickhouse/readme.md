@@ -20,6 +20,7 @@ ClickHouse connector allows querying ClickHouse databases.
 ## Config example:
 
 ```yaml
+type: clickhouse
 host: localhost      # Single host address
 hosts:              # Or multiple hosts for cluster setup
   - host1.example.com

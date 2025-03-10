@@ -15,7 +15,9 @@ You can find credentials on your project's home page if you will click `connect`
 
 Create `connection.yaml` with your Supabase database credentials. 
 ```bash
-echo "hosts:
+echo "
+type: postgres
+hosts:
   - xxx.pooler.supabase.com
 user: \"postgres.xxxxx\"
 password: \"password\"

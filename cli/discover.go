@@ -65,7 +65,6 @@ func init() {
 
 func Discover() *cobra.Command {
 	var configPath string
-	var databaseType string
 	var tables string
 	var aiProvider string
 	var aiEndpoint string
@@ -97,10 +96,12 @@ func Discover() *cobra.Command {
 				return err
 			}
 
-			resolvedTables, err := loadTablesData(splitTables(tables), configRaw, databaseType)
+			resolvedTables, err := loadTablesData(splitTables(tables), configRaw)
 			if err != nil {
 				return xerrors.Errorf("unable to verify connection: %w", err)
 			}
+
+			databaseType := inferType(configRaw)
 
 			logrus.Info("Step 4: Prepare the prompt for the AI")
 			discoverPrompt := generateDiscoverPrompt(databaseType, extraPrompt, resolvedTables, getSchemaFromConfig(databaseType, configRaw))
@@ -197,7 +198,7 @@ func Discover() *cobra.Command {
 
 	cmd.Flags().StringVar(&configPath, "config", "connection.yaml", "Path to connection yaml file")
 	cmd.Flags().StringVar(&tables, "tables", "", "Comma-separated list of tables to include (e.g. 'table1,table2,table3')")
-	cmd.Flags().StringVar(&databaseType, "db-type", "postgres", "Type of database")
+
 	/*
 		AI provider options:
 	*/

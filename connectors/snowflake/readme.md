@@ -19,6 +19,7 @@ Snowflake connector allows querying Snowflake data warehouse.
 ## Config example:
 
 ```yaml
+type: snowflake
 account: myaccount    # Your Snowflake account identifier
 database: MYDB
 user: myuser
