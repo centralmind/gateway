@@ -121,6 +121,8 @@ func makeDiscoverQuery(params DiscoverQueryParams, prompt string) (DiscoverQuery
 				},
 			},
 		},
+		ModelId:   params.Model,
+		MaxTokens: params.MaxTokens,
 	}
 
 	llmResponse, err := provider.Chat(context.Background(), request)
