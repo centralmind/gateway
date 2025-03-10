@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/centralmind/gateway/cli"
+	_ "github.com/centralmind/gateway/connectors/bigquery"
 	_ "github.com/centralmind/gateway/connectors/clickhouse"
 	_ "github.com/centralmind/gateway/connectors/mysql"
 	_ "github.com/centralmind/gateway/connectors/postgres"
