@@ -170,3 +170,60 @@ func TestClickHouseTypeMapping(t *testing.T) {
 		})
 	}
 }
+
+func TestLoadColumns_WithPrimaryKey(t *testing.T) {
+	ctx := context.Background()
+
+	user := "clickhouse"
+	password := "password"
+	dbname := "testdb"
+
+	clickHouseContainer, err := clickhouse.Run(ctx,
+		"clickhouse/clickhouse-server:23.3.8.21-alpine",
+		clickhouse.WithUsername(user),
+		clickhouse.WithPassword(password),
+		clickhouse.WithDatabase(dbname),
+		clickhouse.WithInitScripts(filepath.Join("testdata", "test_schema.sql")),
+	)
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, testcontainers.TerminateContainer(clickHouseContainer))
+	}()
+
+	host, err := clickHouseContainer.Host(ctx)
+	require.NoError(t, err)
+	port, err := clickHouseContainer.MappedPort(ctx, nat.Port("8123/tcp"))
+	require.NoError(t, err)
+
+	cfg := Config{
+		Host:     host,
+		Database: dbname,
+		User:     user,
+		Password: password,
+		Port:     port.Int(),
+		Secure:   false,
+	}
+
+	connector, err := connectors.New("clickhouse", cfg)
+	require.NoError(t, err)
+
+	// Test primary key detection
+	c := connector.(*Connector)
+	columns, err := c.LoadsColumns(ctx, "test_table")
+	require.NoError(t, err)
+
+	// Verify results
+	assert.Len(t, columns, 3)
+
+	// Find and verify primary key column
+	var foundPK bool
+	for _, col := range columns {
+		if col.Name == "id" {
+			assert.True(t, col.PrimaryKey, "Column 'id' should be a primary key")
+			foundPK = true
+		} else {
+			assert.False(t, col.PrimaryKey, "Column '%s' should not be a primary key", col.Name)
+		}
+	}
+	assert.True(t, foundPK, "Primary key column 'id' not found")
+}

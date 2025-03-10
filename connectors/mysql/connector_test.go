@@ -167,3 +167,59 @@ func TestMySQLTypeMapping(t *testing.T) {
 		})
 	}
 }
+
+func TestLoadColumns_WithPrimaryKey(t *testing.T) {
+	ctx := context.Background()
+
+	dbName := "testdb"
+	dbUser := "user"
+	dbPassword := "password"
+
+	mysqlContainer, err := mysql.Run(ctx,
+		"mysql:8.0",
+		mysql.WithDatabase(dbName),
+		mysql.WithUsername(dbUser),
+		mysql.WithPassword(dbPassword),
+		mysql.WithScripts(filepath.Join("testdata", "test_schema.sql")),
+	)
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, testcontainers.TerminateContainer(mysqlContainer))
+	}()
+
+	host, err := mysqlContainer.Host(ctx)
+	require.NoError(t, err)
+	port, err := mysqlContainer.MappedPort(ctx, nat.Port("3306/tcp"))
+	require.NoError(t, err)
+
+	cfg := Config{
+		Host:     host,
+		Database: dbName,
+		User:     dbUser,
+		Password: dbPassword,
+		Port:     port.Int(),
+	}
+
+	connector, err := connectors.New("mysql", cfg)
+	require.NoError(t, err)
+
+	// Test primary key detection
+	c := connector.(*Connector)
+	columns, err := c.LoadsColumns(ctx, "test_table")
+	require.NoError(t, err)
+
+	// Verify results
+	assert.Len(t, columns, 3)
+
+	// Find and verify primary key column
+	var foundPK bool
+	for _, col := range columns {
+		if col.Name == "id" {
+			assert.True(t, col.PrimaryKey, "Column 'id' should be a primary key")
+			foundPK = true
+		} else {
+			assert.False(t, col.PrimaryKey, "Column '%s' should not be a primary key", col.Name)
+		}
+	}
+	assert.True(t, foundPK, "Primary key column 'id' not found")
+}

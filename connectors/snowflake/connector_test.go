@@ -3,8 +3,9 @@ package snowflake
 import (
 	"testing"
 
-	"github.com/centralmind/gateway/model"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/centralmind/gateway/model"
 )
 
 func TestSnowflakeTypeMapping(t *testing.T) {

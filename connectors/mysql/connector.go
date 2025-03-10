@@ -156,7 +156,13 @@ func (c Connector) Query(ctx context.Context, endpoint model.Endpoint, params ma
 func (c Connector) LoadsColumns(ctx context.Context, tableName string) ([]model.ColumnSchema, error) {
 	rows, err := c.db.QueryContext(
 		ctx,
-		"SELECT COLUMN_NAME, DATA_TYPE FROM information_schema.columns WHERE table_name = ? AND table_schema = ?",
+		`SELECT 
+			COLUMN_NAME, 
+			DATA_TYPE,
+			COLUMN_KEY = 'PRI' as is_primary_key
+		FROM information_schema.columns 
+		WHERE table_name = ? 
+		AND table_schema = ?`,
 		tableName, c.config.Database,
 	)
 	if err != nil {
@@ -167,12 +173,14 @@ func (c Connector) LoadsColumns(ctx context.Context, tableName string) ([]model.
 	var columns []model.ColumnSchema
 	for rows.Next() {
 		var name, dataType string
-		if err := rows.Scan(&name, &dataType); err != nil {
+		var isPrimaryKey bool
+		if err := rows.Scan(&name, &dataType, &isPrimaryKey); err != nil {
 			return nil, err
 		}
 		columns = append(columns, model.ColumnSchema{
-			Name: name,
-			Type: c.GuessColumnType(dataType),
+			Name:       name,
+			Type:       c.GuessColumnType(dataType),
+			PrimaryKey: isPrimaryKey,
 		})
 	}
 	return columns, nil

@@ -53,6 +53,7 @@ func TestConnector(t *testing.T) {
 		User:     dbUser,
 		Password: dbPassword,
 		Port:     port.Int(),
+		Schema:   "public",
 	}
 	connector, err := connectors.New("postgres", cfg)
 	assert.NoError(t, err)
@@ -119,7 +120,7 @@ func TestConnector(t *testing.T) {
 	})
 }
 
-func TestPostgreSQLTypeMapping(t *testing.T) {
+func TestPostgresTypeMapping(t *testing.T) {
 	c := &Connector{}
 
 	tests := []struct {
@@ -129,24 +130,33 @@ func TestPostgreSQLTypeMapping(t *testing.T) {
 	}{
 		// String types
 		{"varchar", "VARCHAR", model.TypeString},
-		{"text", "TEXT", model.TypeString},
 		{"char", "CHAR", model.TypeString},
+		{"text", "TEXT", model.TypeString},
 		{"name", "NAME", model.TypeString},
+		{"bpchar", "BPCHAR", model.TypeString},
+		{"bytea", "BYTEA", model.TypeString},
 		{"uuid", "UUID", model.TypeString},
 		{"xml", "XML", model.TypeString},
 		{"citext", "CITEXT", model.TypeString},
+		{"character", "CHARACTER", model.TypeString},
+		{"character varying", "CHARACTER VARYING", model.TypeString},
+		{"nchar", "NCHAR", model.TypeString},
+		{"nvarchar", "NVARCHAR", model.TypeString},
 
 		// Numeric types
-		{"numeric", "NUMERIC", model.TypeNumber},
 		{"decimal", "DECIMAL", model.TypeNumber},
+		{"numeric", "NUMERIC", model.TypeNumber},
 		{"real", "REAL", model.TypeNumber},
 		{"double precision", "DOUBLE PRECISION", model.TypeNumber},
 		{"money", "MONEY", model.TypeNumber},
 
 		// Integer types
+		{"int4", "INT4", model.TypeInteger},
+		{"int8", "INT8", model.TypeInteger},
+		{"smallint", "SMALLINT", model.TypeInteger},
 		{"integer", "INTEGER", model.TypeInteger},
 		{"bigint", "BIGINT", model.TypeInteger},
-		{"smallint", "SMALLINT", model.TypeInteger},
+		{"smallserial", "SMALLSERIAL", model.TypeInteger},
 		{"serial", "SERIAL", model.TypeInteger},
 		{"bigserial", "BIGSERIAL", model.TypeInteger},
 
@@ -154,22 +164,21 @@ func TestPostgreSQLTypeMapping(t *testing.T) {
 		{"boolean", "BOOLEAN", model.TypeBoolean},
 		{"bool", "BOOL", model.TypeBoolean},
 
+		// Array types
+		{"array", "TEXT[]", model.TypeArray},
+		{"array2", "INTEGER[]", model.TypeArray},
+
 		// JSON types
 		{"json", "JSON", model.TypeObject},
 		{"jsonb", "JSONB", model.TypeObject},
 
-		// Array types
-		{"text[]", "TEXT[]", model.TypeArray},
-		{"integer[]", "INTEGER[]", model.TypeArray},
-		{"varchar[]", "VARCHAR[]", model.TypeArray},
-
 		// Date/Time types
-		{"timestamp", "TIMESTAMP", model.TypeDatetime},
 		{"date", "DATE", model.TypeDatetime},
 		{"time", "TIME", model.TypeDatetime},
-		{"interval", "INTERVAL", model.TypeDatetime},
-		{"timestamptz", "TIMESTAMPTZ", model.TypeDatetime},
 		{"timetz", "TIMETZ", model.TypeDatetime},
+		{"timestamp", "TIMESTAMP", model.TypeDatetime},
+		{"timestamptz", "TIMESTAMPTZ", model.TypeDatetime},
+		{"interval", "INTERVAL", model.TypeDatetime},
 	}
 
 	for _, tt := range tests {
@@ -178,4 +187,65 @@ func TestPostgreSQLTypeMapping(t *testing.T) {
 			assert.Equal(t, tt.expected, result, "Type mapping mismatch for %s", tt.sqlType)
 		})
 	}
+}
+
+func TestLoadColumns_WithPrimaryKey(t *testing.T) {
+	ctx := context.Background()
+
+	dbName := "testdb"
+	dbUser := "postgres"
+	dbPassword := "password"
+
+	postgresContainer, err := postgres.Run(ctx,
+		"postgres:16-alpine",
+		postgres.WithInitScripts(filepath.Join("testdata", "test_schema.sql")),
+		postgres.WithDatabase(dbName),
+		postgres.WithUsername(dbUser),
+		postgres.WithPassword(dbPassword),
+		testcontainers.WithWaitStrategy(
+			wait.ForLog("database system is ready to accept connections").
+				WithOccurrence(2).
+				WithStartupTimeout(5*time.Second)),
+	)
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, testcontainers.TerminateContainer(postgresContainer))
+	}()
+
+	host, err := postgresContainer.Host(ctx)
+	require.NoError(t, err)
+	port, err := postgresContainer.MappedPort(ctx, nat.Port("5432/tcp"))
+	require.NoError(t, err)
+
+	cfg := Config{
+		Hosts:    []string{host},
+		Database: dbName,
+		User:     dbUser,
+		Password: dbPassword,
+		Port:     port.Int(),
+		Schema:   "public",
+	}
+
+	connector, err := connectors.New("postgres", cfg)
+	require.NoError(t, err)
+
+	// Test primary key detection
+	c := connector.(*Connector)
+	columns, err := c.LoadsColumns(ctx, "test_table")
+	require.NoError(t, err)
+
+	// Verify results
+	assert.Len(t, columns, 3)
+
+	// Find and verify primary key column
+	var foundPK bool
+	for _, col := range columns {
+		if col.Name == "id" {
+			assert.True(t, col.PrimaryKey, "Column 'id' should be a primary key")
+			foundPK = true
+		} else {
+			assert.False(t, col.PrimaryKey, "Column '%s' should not be a primary key", col.Name)
+		}
+	}
+	assert.True(t, foundPK, "Primary key column 'id' not found")
 }

@@ -152,8 +152,21 @@ func (c Connector) Query(ctx context.Context, endpoint model.Endpoint, params ma
 func (c Connector) LoadsColumns(ctx context.Context, tableName string) ([]model.ColumnSchema, error) {
 	rows, err := c.db.QueryContext(
 		ctx,
-		"SELECT COLUMN_NAME, DATA_TYPE FROM information_schema.columns WHERE table_name = ?",
-		tableName,
+		`SELECT 
+			c.COLUMN_NAME,
+			c.DATA_TYPE,
+			CASE WHEN k.COLUMN_NAME IS NOT NULL THEN true ELSE false END as is_primary_key
+		FROM information_schema.columns c
+		LEFT JOIN information_schema.key_column_usage k 
+			ON c.table_catalog = k.table_catalog 
+			AND c.table_schema = k.table_schema
+			AND c.table_name = k.table_name 
+			AND c.column_name = k.column_name 
+			AND k.constraint_name LIKE 'SYS_CONSTRAINT_%'
+		WHERE c.table_name = ?
+		AND c.table_schema = ?
+		AND c.table_catalog = ?`,
+		tableName, c.config.Schema, c.config.Database,
 	)
 	if err != nil {
 		return nil, err
@@ -163,12 +176,14 @@ func (c Connector) LoadsColumns(ctx context.Context, tableName string) ([]model.
 	var columns []model.ColumnSchema
 	for rows.Next() {
 		var name, dataType string
-		if err := rows.Scan(&name, &dataType); err != nil {
+		var isPrimaryKey bool
+		if err := rows.Scan(&name, &dataType, &isPrimaryKey); err != nil {
 			return nil, err
 		}
 		columns = append(columns, model.ColumnSchema{
-			Name: name,
-			Type: c.GuessColumnType(dataType),
+			Name:       name,
+			Type:       c.GuessColumnType(dataType),
+			PrimaryKey: isPrimaryKey,
 		})
 	}
 	return columns, nil
