@@ -45,6 +45,44 @@ gateway:
     connection: ''        # Database connection string
 ```
 
+## Managing Secrets
+
+Gateway supports environment variables expansion in the configuration using `${VARIABLE_NAME}` syntax. In Kubernetes environment, you can manage these secrets using:
+
+### Using Kubernetes Secrets
+
+1. Create a Kubernetes secret:
+```bash
+kubectl create secret generic gateway-secrets \
+  --from-literal=DB_PASSWORD=mysecret \
+  --from-literal=API_SECRET_KEY=your-secret-key
+```
+
+2. Reference secrets in your values.yaml:
+```yaml
+gateway:
+  envFrom:
+    - secretRef:
+        name: gateway-secrets
+  api:
+    auth:
+      secret_key: ${API_SECRET_KEY}
+  database:
+    connection:
+      password: ${DB_PASSWORD}
+```
+
+### Using External Secret Managers
+
+For production environments, you can use external secret managers like HashiCorp Vault or AWS Secrets Manager with tools like External Secrets Operator:
+
+```yaml
+gateway:
+  envFrom:
+    - secretRef:
+        name: gateway-external-secrets
+```
+
 ## Example values.yaml
 
 ```yaml

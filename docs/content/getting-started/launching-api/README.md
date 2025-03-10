@@ -48,8 +48,49 @@ If you need to customize the server address or port, you can modify the `gateway
 ```bash
 # Launch on a different port
 ./gateway start --config gateway.yaml rest --addr :7000
-
 ```
+
+#### Managing Secrets with Environment Variables
+
+Gateway supports the use of environment variables in the configuration file through `${VARIABLE_NAME}` syntax. This is particularly useful for managing sensitive information like API keys, database credentials, and other secrets.
+
+##### Using Environment Variables in Configuration
+
+You can use environment variables in your `gateway.yaml` file like this:
+
+```yaml
+database:
+  connection:
+    host: ${DB_HOST}
+    user: ${DB_USER}
+    password: ${DB_PASSWORD}
+    database: ${DB_NAME}
+
+api:
+  auth:
+    secret_key: ${API_SECRET_KEY}
+```
+
+When launching the Gateway, ensure these environment variables are set:
+
+```bash
+# Set environment variables
+export DB_HOST=localhost
+export DB_USER=myuser
+export DB_PASSWORD=mysecret
+export DB_NAME=mydb
+export API_SECRET_KEY=your-secret-key
+
+# Launch the API
+./gateway start --config gateway.yaml rest
+```
+
+#### Best Practices for Secrets Management
+
+1. Never commit sensitive values directly in configuration files
+2. Use environment variables for all sensitive information
+3. Consider using secret management tools in production environments
+4. Keep development and production secrets separate
 
 ## Launching MCP SSE Server Mode
 

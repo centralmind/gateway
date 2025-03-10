@@ -2,6 +2,7 @@ package connectors
 
 import (
 	"context"
+	"os"
 
 	"github.com/centralmind/gateway/model"
 	"github.com/centralmind/gateway/remapper"
@@ -55,13 +56,13 @@ func New(tag string, config any) (Connector, error) {
 	switch v := config.(type) {
 	case string:
 		var r any
-		if err := yaml.Unmarshal([]byte(v), &r); err != nil {
+		if err := yaml.Unmarshal([]byte(os.ExpandEnv(v)), &r); err != nil {
 			return nil, err
 		}
 		config = r
 	case []byte:
 		var r any
-		if err := yaml.Unmarshal(v, &r); err != nil {
+		if err := yaml.Unmarshal([]byte(os.ExpandEnv(string(v))), &r); err != nil {
 			return nil, err
 		}
 		config = r
