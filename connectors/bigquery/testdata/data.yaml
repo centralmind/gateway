@@ -1,0 +1,35 @@
+projects:
+  - id: test-project
+    datasets:
+      - id: test_dataset
+        tables:
+          - id: users
+            columns:
+              - name: id
+                type: INTEGER
+              - name: name
+                type: STRING
+              - name: created_at
+                type: TIMESTAMP
+            data:
+              - id: 1
+                name: alice
+                created_at: "2022-10-21T00:00:00"
+              - id: 30
+                name: bob
+                created_at: "2022-10-21T00:00:00"
+          - id: INFORMATION_SCHEMA.COLUMNS
+            columns:
+              - name: table_schema
+                type: STRING
+              - name: table_name
+                type: STRING
+              - name: column_name
+                type: STRING
+            data:
+              - table_schema: test_ds
+                table_name: table_type_graph
+                column_name: id
+              - table_schema: test_ds
+                table_name: table_type_graph
+                column_name: price

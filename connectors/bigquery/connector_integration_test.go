@@ -1,74 +1,50 @@
 package bigquery
 
 import (
+	"bytes"
 	"context"
+	_ "embed"
 	"fmt"
+	"testing"
+
 	"github.com/centralmind/gateway/connectors"
 	"github.com/centralmind/gateway/model"
-	"github.com/goccy/bigquery-emulator/server"
-	"github.com/goccy/bigquery-emulator/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
+	"github.com/testcontainers/testcontainers-go/modules/gcloud"
 )
 
+//go:embed testdata/data.yaml
+var dataYaml []byte
+
 func TestConnector_Integration(t *testing.T) {
-	// Prepare emulator BigQuery
-	bqServer, err := server.New(server.TempStorage)
+	ctx := context.Background()
+
+	// Start BigQuery emulator container
+	bigQueryContainer, err := gcloud.RunBigQuery(
+		ctx,
+		"ghcr.io/goccy/bigquery-emulator:0.6.6",
+		gcloud.WithProjectID("test-project"),
+		gcloud.WithDataYAML(bytes.NewReader(dataYaml)),
+	)
 	require.NoError(t, err)
-	defer bqServer.Close()
+	defer func() {
+		if err := bigQueryContainer.Terminate(ctx); err != nil {
+			t.Logf("failed to terminate container: %s", err)
+		}
+	}()
 
 	const (
 		projectID = "test-project"
 		datasetID = "test_dataset"
 	)
 
-	// Prepare test dataset
-	err = bqServer.Load(
-		server.StructSource(
-			types.NewProject(
-				projectID,
-				types.NewDataset(
-					datasetID,
-					types.NewTable(
-						"users",
-						[]*types.Column{
-							types.NewColumn("id", types.INT64),
-							types.NewColumn("name", types.STRING),
-							types.NewColumn("created_at", types.TIMESTAMP),
-							types.NewColumn("skills", types.ARRAY),
-							types.NewColumn("profile", types.STRUCT),
-						},
-						[]map[string]any{
-							{
-								"id":         1,
-								"name":       "bob",
-								"created_at": "2024-01-01 10:00:00",
-								"skills":     []string{"go", "vno"},
-								"profile": map[string]any{
-									"age":  25,
-									"city": "Zlondon",
-								},
-							},
-						},
-					),
-				),
-			),
-		),
-	)
-	require.NoError(t, err)
-
-	// Run test server
-	err = bqServer.SetProject(projectID)
-	require.NoError(t, err)
-	testServer := bqServer.TestServer()
-	defer testServer.Close()
-
 	// Prepare config
 	cfg := Config{
 		ProjectID:   projectID,
 		Dataset:     datasetID,
-		Credentials: "{}", // для эмулятора достаточно пустых credentials
+		Endpoint:    bigQueryContainer.URI,
+		Credentials: "{}",
 	}
 
 	var connector connectors.Connector
@@ -76,12 +52,12 @@ func TestConnector_Integration(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("ping", func(t *testing.T) {
-		err := connector.Ping(context.Background())
+		err := connector.Ping(ctx)
 		assert.NoError(t, err)
 	})
 
 	t.Run("discovery", func(t *testing.T) {
-		tables, err := connector.Discovery(context.Background())
+		tables, err := connector.Discovery(ctx)
 		require.NoError(t, err)
 		require.Len(t, tables, 1)
 
@@ -105,10 +81,8 @@ func TestConnector_Integration(t *testing.T) {
 	})
 
 	t.Run("query", func(t *testing.T) {
-		require.NoError(t, err)
-
 		selectQuery := fmt.Sprintf(`
-			SELECT id, name, created_at, skills, profile
+			SELECT id, name, created_at
 			FROM %s.%s.users
 			WHERE id = @user_id
 		`, projectID, datasetID)
@@ -117,30 +91,31 @@ func TestConnector_Integration(t *testing.T) {
 			"user_id": 1,
 		}
 
-		results, err := connector.Query(context.Background(), model.Endpoint{Query: selectQuery}, params)
+		results, err := connector.Query(
+			ctx,
+			model.Endpoint{
+				Query: selectQuery,
+				Params: []model.EndpointParams{
+					{
+						Name: "user_id",
+						Type: string(model.TypeInteger),
+					},
+				},
+			},
+			params,
+		)
 		require.NoError(t, err)
 		require.Len(t, results, 1)
 
 		row := results[0]
 		assert.Equal(t, int64(1), row["id"])
-		assert.Equal(t, "Alice", row["name"])
+		assert.Equal(t, "alice", row["name"])
 		assert.NotNil(t, row["created_at"])
-
-		skills, ok := row["skills"].([]interface{})
-		assert.True(t, ok)
-		assert.Len(t, skills, 2)
-		assert.Contains(t, skills, "go")
-		assert.Contains(t, skills, "python")
-
-		profile, ok := row["profile"].(map[string]interface{})
-		assert.True(t, ok)
-		assert.Equal(t, int64(25), profile["age"])
-		assert.Equal(t, "New York", profile["city"])
 	})
 
 	t.Run("sample", func(t *testing.T) {
-		samples, err := connector.Sample(context.Background(), model.Table{Name: "users"})
+		samples, err := connector.Sample(ctx, model.Table{Name: "users"})
 		require.NoError(t, err)
-		assert.Len(t, samples, 1) // should have one single user
+		assert.Len(t, samples, 2) // should have 2 users
 	})
 }

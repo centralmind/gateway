@@ -14,7 +14,6 @@ require (
 	github.com/docker/go-connections v0.5.0
 	github.com/gin-gonic/gin v1.10.0
 	github.com/go-sql-driver/mysql v1.7.1
-	github.com/goccy/bigquery-emulator v0.6.6
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/jackc/pgx/v4 v4.18.3
 	github.com/jmoiron/sqlx v1.3.5
@@ -28,6 +27,7 @@ require (
 	github.com/stretchr/testify v1.10.0
 	github.com/testcontainers/testcontainers-go v0.35.0
 	github.com/testcontainers/testcontainers-go/modules/clickhouse v0.35.0
+	github.com/testcontainers/testcontainers-go/modules/gcloud v0.35.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.35.0
 	github.com/yuin/gopher-lua v1.1.1
 	go.opentelemetry.io/otel v1.34.0
@@ -51,12 +51,9 @@ require (
 	cloud.google.com/go/bigquery v1.61.0 // indirect
 	cloud.google.com/go/compute/metadata v0.5.0 // indirect
 	cloud.google.com/go/iam v1.1.10 // indirect
-	cloud.google.com/go/storage v1.41.0 // indirect
-	github.com/DataDog/go-hll v1.0.2 // indirect
+	github.com/GoogleCloudPlatform/grpc-gcp-go/grpcgcp v1.5.2 // indirect
 	github.com/alecthomas/chroma/v2 v2.14.0 // indirect
-	github.com/apache/arrow/go/v10 v10.0.1 // indirect
 	github.com/apache/arrow/go/v15 v15.0.2 // indirect
-	github.com/apache/thrift v0.19.0 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.16.30 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.3 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.25.1 // indirect
@@ -66,36 +63,19 @@ require (
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/charmbracelet/lipgloss v0.12.1 // indirect
 	github.com/charmbracelet/x/ansi v0.1.4 // indirect
-	github.com/dgryski/go-farm v0.0.0-20200201041132-a6ae2369ad13 // indirect
 	github.com/dlclark/regexp2 v1.11.0 // indirect
-	github.com/dop251/goja v0.0.0-20221118162653-d4bf6fde1b86 // indirect
-	github.com/fatih/color v1.15.0 // indirect
-	github.com/go-sourcemap/sourcemap v2.1.3+incompatible // indirect
-	github.com/goccy/go-yaml v1.11.0 // indirect
-	github.com/goccy/go-zetasql v0.5.5 // indirect
-	github.com/goccy/go-zetasqlite v0.19.3 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
-	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/s2a-go v0.1.7 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.2 // indirect
 	github.com/googleapis/gax-go/v2 v2.12.5 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
-	github.com/gorilla/mux v1.8.1 // indirect
-	github.com/klauspost/asmfmt v1.3.2 // indirect
-	github.com/linkedin/goavro/v2 v2.12.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
-	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/microcosm-cc/bluemonday v1.0.27 // indirect
-	github.com/minio/asm2plan9s v0.0.0-20200509001527-cdd76441f9d8 // indirect
-	github.com/minio/c2goasm v0.0.0-20190812172519-36a3d3bbc4f3 // indirect
 	github.com/muesli/reflow v0.3.0 // indirect
 	github.com/muesli/termenv v0.15.3-0.20240618155329-98d742f6907a // indirect
-	github.com/parquet-go/parquet-go v0.23.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
-	github.com/segmentio/encoding v0.4.0 // indirect
-	github.com/spaolacci/murmur3 v0.0.0-20180118202830-f09979ecbc72 // indirect
 	github.com/tidwall/gjson v1.14.4 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
@@ -105,7 +85,6 @@ require (
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.49.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
-	gonum.org/v1/gonum v0.15.0 // indirect
 	google.golang.org/api v0.189.0 // indirect
 	google.golang.org/genproto v0.0.0-20240722135656-d784300faade // indirect
 )

@@ -20,11 +20,14 @@ var docString string
 func init() {
 	connectors.Register(func(cfg Config) (connectors.Connector, error) {
 		// Format: bigquery://project/location/dataset?credentials=base64_credentials
-		dsn := fmt.Sprintf("bigquery://%s/US/%s?credentials=%s",
+		dsn := fmt.Sprintf("bigquery://%s/%s?1=1&credentials=%s",
 			cfg.ProjectID,
 			cfg.Dataset,
 			cfg.Credentials,
 		)
+		if cfg.Endpoint != "" {
+			dsn = fmt.Sprintf("%s&endpoint=%s&disable_auth=true", dsn, cfg.Endpoint)
+		}
 
 		db, err := sqlx.Open("bigquery", dsn)
 		if err != nil {
@@ -43,6 +46,7 @@ type Config struct {
 	ProjectID   string `json:"project_id"`
 	Dataset     string `json:"dataset"`
 	Credentials string `json:"credentials"`
+	Endpoint    string `yaml:"endpoint"`
 }
 
 func (c Config) Type() string {
@@ -90,9 +94,9 @@ func (c *Connector) Discovery(ctx context.Context) ([]model.Table, error) {
 			column_name,
 			data_type,
 			is_nullable
-		FROM %s.%s.INFORMATION_SCHEMA.COLUMNS
+		FROM %s.INFORMATION_SCHEMA.COLUMNS
 		ORDER BY table_name, ordinal_position`,
-		c.config.ProjectID, c.config.Dataset)
+		c.config.Dataset)
 
 	rows, err := c.db.QueryxContext(ctx, query)
 	if err != nil {
