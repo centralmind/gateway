@@ -13,6 +13,7 @@ This connector allows you to connect to Google BigQuery and execute queries agai
 | dataset | string | yes | The BigQuery dataset name |
 | credentials | string | yes | Google Cloud service account credentials JSON |
 | endpoint | string | no | Custom BigQuery API endpoint (for testing) |
+| conn_string | string | no | JSON-formatted connection string with all parameters |
 
 ## Config example:
 
@@ -24,6 +25,21 @@ credentials: |
   {
     "type": "service_account",
     ...
+  }
+```
+
+Or as alternative with JSON-formatted connection string:
+
+```yaml
+type: bigquery
+conn_string: |
+  {
+    "project_id": "your-project-id",
+    "dataset": "your_dataset",
+    "credentials": {
+      "type": "service_account",
+      ...
+    }
   }
 ```
 

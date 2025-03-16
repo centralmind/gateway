@@ -17,6 +17,7 @@ ClickHouse connector allows querying ClickHouse databases.
 | password | string | yes | Password |
 | port | integer | yes | HTTP port (default 8123) |
 | secure | boolean | no | Use HTTPS instead of HTTP |
+| conn_string | string | no | Direct connection string |
 
 ## Config example:
 
@@ -31,4 +32,11 @@ user: default
 password: secret
 port: 8123
 secure: false       # Use HTTPS instead of HTTP 
+```
+
+Or as alternative with direct connection string:
+
+```yaml
+type: clickhouse
+conn_string: http://default:secret@localhost:8123/mydb
 ```

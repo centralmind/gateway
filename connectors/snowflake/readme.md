@@ -16,6 +16,7 @@ Snowflake connector allows querying Snowflake data warehouse.
 | warehouse | string | yes | Warehouse to use for queries |
 | schema | string | yes | Schema name                  |
 | role | string | yes | Role to assume               |
+| conn_string | string | no | Direct connection string    |
 
 ## Config example:
 
@@ -28,4 +29,11 @@ password: secret
 warehouse: COMPUTE_WH # Warehouse to use for queries
 schema: PUBLIC        # Schema name
 role: ACCOUNTADMIN    # Role to assume 
+```
+
+Or as alternative with direct connection string:
+
+```yaml
+type: snowflake
+conn_string: myuser:secret@myaccount/MYDB/PUBLIC?warehouse=COMPUTE_WH&role=ACCOUNTADMIN
 ```

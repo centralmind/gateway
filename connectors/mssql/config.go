@@ -3,6 +3,8 @@ package mssql
 import (
 	_ "embed"
 	"fmt"
+
+	"gopkg.in/yaml.v3"
 )
 
 //go:embed readme.md
@@ -10,16 +12,43 @@ var docString string
 
 // Config represents the configuration for a Microsoft SQL Server connection
 type Config struct {
-	Hosts    []string `json:"hosts" yaml:"hosts"`       // List of server addresses
-	User     string   `json:"user" yaml:"user"`         // Username for authentication
-	Password string   `json:"password" yaml:"password"` // Password for authentication
-	Database string   `json:"database" yaml:"database"` // Database name
-	Port     int      `json:"port" yaml:"port"`         // Port number (default 1433)
-	Schema   string   `json:"schema" yaml:"schema"`     // Schema name (default "dbo")
+	Hosts      []string `json:"hosts" yaml:"hosts"`             // List of server addresses
+	User       string   `json:"user" yaml:"user"`               // Username for authentication
+	Password   string   `json:"password" yaml:"password"`       // Password for authentication
+	Database   string   `json:"database" yaml:"database"`       // Database name
+	Port       int      `json:"port" yaml:"port"`               // Port number (default 1433)
+	Schema     string   `json:"schema" yaml:"schema"`           // Schema name (default "dbo")
+	ConnString string   `json:"conn_string" yaml:"conn_string"` // Direct connection string
+}
+
+// UnmarshalYAML implements the yaml.Unmarshaler interface to allow for both
+// direct connection string or full configuration objects in YAML
+func (c *Config) UnmarshalYAML(value *yaml.Node) error {
+	// Try to unmarshal as a string (connection string)
+	var connString string
+	if err := value.Decode(&connString); err == nil && len(connString) > 0 {
+		c.ConnString = connString
+		return nil
+	}
+
+	// If that didn't work, try to unmarshal as a full config object
+	type configAlias Config // Use alias to avoid infinite recursion
+	var alias configAlias
+	if err := value.Decode(&alias); err != nil {
+		return err
+	}
+
+	*c = Config(alias)
+	return nil
 }
 
 // ConnectionString generates a connection string for Microsoft SQL Server
 func (c Config) ConnectionString() string {
+	// If direct connection string is provided, use it
+	if c.ConnString != "" {
+		return c.ConnString
+	}
+
 	// Use the first host from the list
 	server := c.Hosts[0]
 	if len(c.Hosts) > 1 {

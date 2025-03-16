@@ -4,14 +4,16 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
-	"github.com/centralmind/gateway/connectors"
 	"strings"
+
+	"github.com/centralmind/gateway/connectors"
 
 	_ "github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/centralmind/gateway/castx"
 	"github.com/centralmind/gateway/model"
 	"github.com/jmoiron/sqlx"
 	"golang.org/x/xerrors"
+	"gopkg.in/yaml.v3"
 )
 
 //go:embed readme.md
@@ -33,13 +35,35 @@ func init() {
 }
 
 type Config struct {
-	Host     string   // Single host
-	Hosts    []string // Multiple hosts
-	Database string
-	User     string
-	Password string
-	Port     int
-	Secure   bool
+	Host       string   // Single host
+	Hosts      []string // Multiple hosts
+	Database   string
+	User       string
+	Password   string
+	Port       int
+	Secure     bool
+	ConnString string // Direct connection string
+}
+
+// UnmarshalYAML implements the yaml.Unmarshaler interface to allow for both
+// direct connection string or full configuration objects in YAML
+func (c *Config) UnmarshalYAML(value *yaml.Node) error {
+	// Try to unmarshal as a string (connection string)
+	var connString string
+	if err := value.Decode(&connString); err == nil && len(connString) > 0 {
+		c.ConnString = connString
+		return nil
+	}
+
+	// If that didn't work, try to unmarshal as a full config object
+	type configAlias Config // Use alias to avoid infinite recursion
+	var alias configAlias
+	if err := value.Decode(&alias); err != nil {
+		return err
+	}
+
+	*c = Config(alias)
+	return nil
 }
 
 func (c Config) ExtraPrompt() []string {
@@ -47,6 +71,11 @@ func (c Config) ExtraPrompt() []string {
 }
 
 func (c Config) MakeDSN() string {
+	// If connection string is provided, use it directly
+	if c.ConnString != "" {
+		return c.ConnString
+	}
+
 	protocol := "http"
 	if c.Secure {
 		protocol = "https"

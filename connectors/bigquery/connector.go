@@ -3,6 +3,7 @@ package bigquery
 import (
 	"context"
 	_ "embed"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -16,6 +17,7 @@ import (
 	"golang.org/x/xerrors"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
+	"gopkg.in/yaml.v3"
 )
 
 //go:embed readme.md
@@ -24,6 +26,32 @@ var docString string
 func init() {
 	connectors.Register(func(cfg Config) (connectors.Connector, error) {
 		var opts []option.ClientOption
+
+		// If connection string is provided, try to parse it as JSON
+		if cfg.ConnString != "" {
+			var connConfig struct {
+				ProjectID   string `json:"project_id"`
+				Dataset     string `json:"dataset"`
+				Credentials string `json:"credentials"`
+				Endpoint    string `json:"endpoint"`
+			}
+
+			if err := json.Unmarshal([]byte(cfg.ConnString), &connConfig); err == nil {
+				// If successful, update the config fields
+				if connConfig.ProjectID != "" {
+					cfg.ProjectID = connConfig.ProjectID
+				}
+				if connConfig.Dataset != "" {
+					cfg.Dataset = connConfig.Dataset
+				}
+				if connConfig.Credentials != "" {
+					cfg.Credentials = connConfig.Credentials
+				}
+				if connConfig.Endpoint != "" {
+					cfg.Endpoint = connConfig.Endpoint
+				}
+			}
+		}
 
 		if cfg.Credentials != "" && cfg.Credentials != "{}" {
 			credentialsFile := filepath.Join(logger.DefaultLogDir(), "bigquery-credentials.json")
@@ -59,6 +87,28 @@ type Config struct {
 	Dataset     string `json:"dataset" yaml:"dataset"`
 	Credentials string `json:"credentials" yaml:"credentials"`
 	Endpoint    string `yaml:"endpoint"`
+	ConnString  string `yaml:"conn_string"`
+}
+
+// UnmarshalYAML implements the yaml.Unmarshaler interface to allow for both
+// direct connection string or full configuration objects in YAML
+func (c *Config) UnmarshalYAML(value *yaml.Node) error {
+	// Try to unmarshal as a string (connection string)
+	var connString string
+	if err := value.Decode(&connString); err == nil && len(connString) > 0 {
+		c.ConnString = connString
+		return nil
+	}
+
+	// If that didn't work, try to unmarshal as a full config object
+	type configAlias Config // Use alias to avoid infinite recursion
+	var alias configAlias
+	if err := value.Decode(&alias); err != nil {
+		return err
+	}
+
+	*c = Config(alias)
+	return nil
 }
 
 func (c Config) ExtraPrompt() []string {

@@ -15,6 +15,7 @@ Microsoft SQL Server connector allows querying SQL Server and Azure SQL database
 | database | string | yes | Database name |
 | port | integer | no | Port number (default: 1433) |
 | schema | string | no | Schema name (default: "dbo") |
+| conn_string | string | no | Direct connection string |
 
 ## Config example:
 
@@ -29,6 +30,12 @@ port: 1433
 schema: dbo
 ```
 
+Or as alternative with direct connection string:
+
+```yaml
+type: mssql
+conn_string: sqlserver://my_user:my_password@my-server.database.windows.net:1433?database=my_database&schema=dbo
+```
 
 ## Notes
 

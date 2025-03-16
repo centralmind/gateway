@@ -34,16 +34,9 @@ func (c Config) ExtraPrompt() []string {
 func (c *Config) UnmarshalYAML(value *yaml.Node) error {
 	// Try to unmarshal as a string (connection string)
 	var connString string
-	if err := value.Decode(&connString); err == nil {
-		// If successful, validate and set the connection string field
-		if len(connString) > 0 {
-			// Validate that it starts with postgresql://
-			if len(connString) < 13 || connString[:13] != "postgresql://" {
-				return errors.New("invalid PostgreSQL connection string, must start with postgresql://")
-			}
-			c.ConnString = connString
-			return nil
-		}
+	if err := value.Decode(&connString); err == nil && len(connString) > 0 {
+		c.ConnString = connString
+		return nil
 	}
 
 	// If that didn't work, try to unmarshal as a full config object
@@ -53,7 +46,6 @@ func (c *Config) UnmarshalYAML(value *yaml.Node) error {
 		return err
 	}
 
-	// Copy the fields from alias to c
 	*c = Config(alias)
 	return nil
 }
@@ -104,6 +96,7 @@ func (c Config) MakeConfig() (*pgx.ConnConfig, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	config, _ := pgx.ParseConfig("")
 	config.Host = c.Hosts[0]
 	config.Port = uint16(c.Port)
@@ -112,6 +105,7 @@ func (c Config) MakeConfig() (*pgx.ConnConfig, error) {
 	config.Password = string(c.Password)
 	config.TLSConfig = tlsConfig
 	config.PreferSimpleProtocol = true
+
 	return config, nil
 }
 

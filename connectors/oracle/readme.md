@@ -15,6 +15,7 @@ Oracle Database connector allows querying Oracle databases using pure Go impleme
 | database | string | yes | Service name or SID |
 | schema | string | yes | Schema name (e.g., "HR", "SYSTEM") |
 | port | integer | yes | Port number (default: 1521) |
+| conn_string | string | no | Direct connection string |
 
 ## Config example:
 
@@ -27,6 +28,13 @@ password: secretpassword
 database: FREEPDB1
 schema: HR
 port: 1521
+```
+
+Or as alternative with direct connection string:
+
+```yaml
+type: oracle
+conn_string: oracle://system:secretpassword@localhost:1521/FREEPDB1
 ```
 
 ## Notes
