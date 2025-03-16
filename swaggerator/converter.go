@@ -180,6 +180,250 @@ func Schema(schema model.Config, prefix string, addresses ...string) (*huma.Open
 	return api, nil
 }
 
+// AddRawEndpoints adds Raw API endpoints to an existing OpenAPI schema
+func AddRawEndpoints(api *huma.OpenAPI, schema model.Config, prefix string) (*huma.OpenAPI, error) {
+	// Define Raw API endpoints
+	rawPath := "/raw"
+	if prefix != "" {
+		rawPath = path.Join("/", prefix, "raw")
+	}
+
+	// List Tables endpoint
+	listTablesOperation := &huma.Operation{
+		Summary:     "List available tables",
+		Description: "Return list of tables that available for data",
+		OperationID: "list_tables",
+		Tags:        []string{"Raw"},
+		Responses: map[string]*huma.Response{
+			"200": {
+				Description: "Success",
+				Content: map[string]*huma.MediaType{
+					"application/json": {
+						Schema: &huma.Schema{
+							Type: "array",
+							Items: &huma.Schema{
+								Type: "object",
+								Properties: map[string]*huma.Schema{
+									"name": {Type: "string"},
+									"columns": {
+										Type: "array",
+										Items: &huma.Schema{
+											Type: "object",
+											Properties: map[string]*huma.Schema{
+												"name": {Type: "string"},
+												"type": {Type: "string"},
+											},
+										},
+									},
+									"row_count": {Type: "integer"},
+								},
+							},
+						},
+					},
+				},
+			},
+			"500": {
+				Description: "Error",
+				Content: map[string]*huma.MediaType{
+					"application/json": {
+						Schema: &huma.Schema{
+							Type: "object",
+							Properties: map[string]*huma.Schema{
+								"error": {Type: "string"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Discover Data endpoint
+	discoverDataOperation := &huma.Operation{
+		Summary:     "Discover data structure",
+		Description: "Discover data structure for connected gateway",
+		OperationID: "discover_data",
+		Tags:        []string{"Raw"},
+		Parameters: []*huma.Param{
+			{
+				Name:     "tables_list",
+				In:       "query",
+				Required: false,
+				Schema: &huma.Schema{
+					Type:        "string",
+					Description: "Comma separated table names to fetch data samples",
+				},
+			},
+		},
+		Responses: map[string]*huma.Response{
+			"200": {
+				Description: "Success",
+				Content: map[string]*huma.MediaType{
+					"application/json": {
+						Schema: &huma.Schema{
+							Type: "array",
+							Items: &huma.Schema{
+								Type: "object",
+								Properties: map[string]*huma.Schema{
+									"name": {Type: "string"},
+									"columns": {
+										Type: "array",
+										Items: &huma.Schema{
+											Type: "object",
+											Properties: map[string]*huma.Schema{
+												"name": {Type: "string"},
+												"type": {Type: "string"},
+											},
+										},
+									},
+									"sample": {
+										Type: "array",
+										Items: &huma.Schema{
+											Type: "object",
+										},
+									},
+									"row_count": {Type: "integer"},
+								},
+							},
+						},
+					},
+				},
+			},
+			"500": {
+				Description: "Error",
+				Content: map[string]*huma.MediaType{
+					"application/json": {
+						Schema: &huma.Schema{
+							Type: "object",
+							Properties: map[string]*huma.Schema{
+								"error": {Type: "string"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Prepare Query endpoint
+	prepareQueryOperation := &huma.Operation{
+		Summary:     "Verify and prepare query",
+		Description: "Verify query and prepare output structure for query",
+		OperationID: "prepare_query",
+		Tags:        []string{"Raw"},
+		Parameters: []*huma.Param{
+			{
+				Name:     "query",
+				In:       "query",
+				Required: true,
+				Schema: &huma.Schema{
+					Type:        "string",
+					Description: "SQL query to verify",
+				},
+			},
+		},
+		Responses: map[string]*huma.Response{
+			"200": {
+				Description: "Success",
+				Content: map[string]*huma.MediaType{
+					"application/json": {
+						Schema: &huma.Schema{
+							Type: "array",
+							Items: &huma.Schema{
+								Type: "object",
+								Properties: map[string]*huma.Schema{
+									"name": {Type: "string"},
+									"type": {Type: "string"},
+								},
+							},
+						},
+					},
+				},
+			},
+			"500": {
+				Description: "Error",
+				Content: map[string]*huma.MediaType{
+					"application/json": {
+						Schema: &huma.Schema{
+							Type: "object",
+							Properties: map[string]*huma.Schema{
+								"error": {Type: "string"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Query endpoint
+	queryOperation := &huma.Operation{
+		Summary:     "Execute query",
+		Description: "Query data structure for connected gateway",
+		OperationID: "query",
+		Tags:        []string{"Raw"},
+		Parameters: []*huma.Param{
+			{
+				Name:     "query",
+				In:       "query",
+				Required: true,
+				Schema: &huma.Schema{
+					Type:        "string",
+					Description: "SQL query to execute",
+				},
+			},
+		},
+		Responses: map[string]*huma.Response{
+			"200": {
+				Description: "Success",
+				Content: map[string]*huma.MediaType{
+					"application/json": {
+						Schema: &huma.Schema{
+							Type: "array",
+							Items: &huma.Schema{
+								Type: "object",
+							},
+						},
+					},
+				},
+			},
+			"500": {
+				Description: "Error",
+				Content: map[string]*huma.MediaType{
+					"application/json": {
+						Schema: &huma.Schema{
+							Type: "object",
+							Properties: map[string]*huma.Schema{
+								"error": {Type: "string"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Add operations to paths
+	if api.Paths == nil {
+		api.Paths = make(map[string]*huma.PathItem)
+	}
+
+	api.Paths[path.Join(rawPath, "list_tables")] = &huma.PathItem{
+		Get: listTablesOperation,
+	}
+	api.Paths[path.Join(rawPath, "discover_data")] = &huma.PathItem{
+		Get: discoverDataOperation,
+	}
+	api.Paths[path.Join(rawPath, "prepare_query")] = &huma.PathItem{
+		Get: prepareQueryOperation,
+	}
+	api.Paths[path.Join(rawPath, "query")] = &huma.PathItem{
+		Get: queryOperation,
+	}
+
+	return api, nil
+}
+
 func byteHandler(b []byte) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Write(b)

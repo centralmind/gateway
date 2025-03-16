@@ -3,14 +3,17 @@ package restgenerator
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"path"
 	"regexp"
+	"strings"
 
 	"github.com/centralmind/gateway/connectors"
 	gw_errors "github.com/centralmind/gateway/errors"
 	gw_model "github.com/centralmind/gateway/model"
 	"github.com/centralmind/gateway/plugins"
+	"github.com/centralmind/gateway/prompter"
 	"github.com/centralmind/gateway/swaggerator"
 	"github.com/centralmind/gateway/xcontext"
 	"github.com/gin-gonic/gin"
@@ -63,7 +66,7 @@ func New(
 }
 
 // RegisterRoutes registers Rest endpoints.
-func (r *Rest) RegisterRoutes(mux *http.ServeMux, disableSwagger bool, addresses ...string) error {
+func (r *Rest) RegisterRoutes(mux *http.ServeMux, disableSwagger bool, rawMode bool, addresses ...string) error {
 	if err := plugins.Routes(r.Schema.Plugins, mux); err != nil {
 		return xerrors.Errorf("unable to register plugin routes: %w", err)
 	}
@@ -73,6 +76,15 @@ func (r *Rest) RegisterRoutes(mux *http.ServeMux, disableSwagger bool, addresses
 	if err != nil {
 		return xerrors.Errorf("unable to build swagger doc: %w", err)
 	}
+
+	if rawMode {
+		// Add Raw API endpoints to the existing Swagger
+		swagger, err = swaggerator.AddRawEndpoints(swagger, r.Schema, r.prefix)
+		if err != nil {
+			return xerrors.Errorf("unable to add Raw API endpoints: %w", err)
+		}
+	}
+
 	raw, err := json.Marshal(swagger)
 	if err != nil {
 		return xerrors.Errorf("unable to build swagger: %w", err)
@@ -87,6 +99,15 @@ func (r *Rest) RegisterRoutes(mux *http.ServeMux, disableSwagger bool, addresses
 		for _, endpoint := range table.Endpoints {
 			d.Handle(endpoint.HTTPMethod, convertSwaggerToGin(r.prefix+endpoint.HTTPPath), r.Handler(endpoint))
 		}
+	}
+
+	if rawMode {
+		// Register Raw API endpoints
+		rawPath := path.Join("/", r.prefix, "raw")
+		d.GET(path.Join(rawPath, "list_tables"), r.ListTablesHandler())
+		d.GET(path.Join(rawPath, "discover_data"), r.DiscoverDataHandler())
+		d.GET(path.Join(rawPath, "prepare_query"), r.PrepareQueryHandler())
+		d.GET(path.Join(rawPath, "query"), r.QueryHandler())
 	}
 
 	rootPath := path.Join("/", r.prefix)
@@ -161,6 +182,163 @@ func (r *Rest) Handler(endpoint gw_model.Endpoint) gin.HandlerFunc {
 			}
 		}
 		c.JSON(http.StatusOK, res)
+	}
+}
+
+// ListTablesHandler returns a list of available tables
+func (r *Rest) ListTablesHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		ctx = xcontext.WithHeader(ctx, c.Request.Header)
+
+		data, err := r.connector.Discovery(ctx)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("unable to discover data: %v", err)})
+			return
+		}
+
+		// Format the response
+		var result []map[string]interface{}
+		for _, record := range data {
+			schema := prompter.SchemaFromConfig(r.connector.Config())
+			if schema != "" {
+				record.Name = fmt.Sprintf("%v.%v", schema, record.Name)
+			}
+
+			// Convert columns to a format suitable for JSON
+			var columns []map[string]interface{}
+			for _, col := range record.Columns {
+				columns = append(columns, map[string]interface{}{
+					"name": col.Name,
+					"type": col.Type,
+				})
+			}
+
+			result = append(result, map[string]interface{}{
+				"name":      record.Name,
+				"columns":   columns,
+				"row_count": record.RowCount,
+			})
+		}
+
+		c.JSON(http.StatusOK, result)
+	}
+}
+
+// DiscoverDataHandler discovers data structure for connected gateway
+func (r *Rest) DiscoverDataHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		ctx = xcontext.WithHeader(ctx, c.Request.Header)
+
+		allTables, err := r.connector.Discovery(ctx)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("unable to discover all tables: %v", err)})
+			return
+		}
+
+		tablesList := c.Query("tables_list")
+		tableSet := map[string]bool{}
+
+		for _, table := range strings.Split(tablesList, ",") {
+			if table != "" {
+				tableSet[table] = true
+			}
+		}
+
+		if len(tablesList) == 0 {
+			for _, table := range allTables {
+				tableSet[table.Name] = true
+			}
+		}
+
+		var result []map[string]interface{}
+		for _, table := range allTables {
+			if !tableSet[table.Name] {
+				continue
+			}
+
+			sample, err := r.connector.Sample(ctx, table)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("unable to discover sample: %v", err)})
+				return
+			}
+
+			// Convert columns to a format suitable for JSON
+			var columns []map[string]interface{}
+			for _, col := range table.Columns {
+				columns = append(columns, map[string]interface{}{
+					"name": col.Name,
+					"type": col.Type,
+				})
+			}
+
+			result = append(result, map[string]interface{}{
+				"name":      table.Name,
+				"columns":   columns,
+				"sample":    sample,
+				"row_count": table.RowCount,
+			})
+		}
+
+		c.JSON(http.StatusOK, result)
+	}
+}
+
+// PrepareQueryHandler verifies query and prepares output structure
+func (r *Rest) PrepareQueryHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		ctx = xcontext.WithHeader(ctx, c.Request.Header)
+
+		query := c.Query("query")
+		if query == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "query parameter is required"})
+			return
+		}
+
+		resSchema, err := r.connector.InferQuery(ctx, query)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("unable to infer query: %v", err)})
+			return
+		}
+
+		// Convert schema to a format suitable for JSON
+		var result []map[string]interface{}
+		for _, col := range resSchema {
+			result = append(result, map[string]interface{}{
+				"name": col.Name,
+				"type": col.Type,
+			})
+		}
+
+		c.JSON(http.StatusOK, result)
+	}
+}
+
+// QueryHandler executes a query against the database
+func (r *Rest) QueryHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		ctx = xcontext.WithHeader(ctx, c.Request.Header)
+
+		query := c.Query("query")
+		if query == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "query parameter is required"})
+			return
+		}
+
+		resData, err := r.connector.Query(
+			ctx,
+			gw_model.Endpoint{Query: query},
+			make(map[string]any),
+		)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("unable to execute query: %v", err)})
+			return
+		}
+
+		c.JSON(http.StatusOK, resData)
 	}
 }
 

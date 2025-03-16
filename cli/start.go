@@ -88,7 +88,7 @@ func StartCommand() *cobra.Command {
 			serverAddresses = append(serverAddresses, fmt.Sprintf("http://localhost%s", addr))
 		}
 
-		if err := a.RegisterRoutes(mux, disableSwagger, serverAddresses...); err != nil {
+		if err := a.RegisterRoutes(mux, disableSwagger, rawMode, serverAddresses...); err != nil {
 			return err
 		}
 
