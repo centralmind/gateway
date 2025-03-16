@@ -23,6 +23,8 @@ func StartCommand() *cobra.Command {
 	var rawMode bool
 	var disableSwagger bool
 	var prefix string
+	var dbDSN string
+	var dbType string
 
 	cmd := &cobra.Command{
 		Use:   "start",
@@ -33,17 +35,36 @@ func StartCommand() *cobra.Command {
 	cmd.PersistentFlags().StringVar(&addr, "addr", ":9090", "addr for gateway")
 	cmd.PersistentFlags().StringVar(&servers, "servers", "", "comma-separated list of additional server URLs for Swagger UI (e.g., https://dev1.example.com,https://dev2.example.com)")
 
+	cmd.Flags().StringVar(&dbDSN, "dsn", "", "database DSN")
+	cmd.Flags().StringVar(&dbType, "type", "postgres", "type of database to use")
 	cmd.Flags().BoolVar(&disableSwagger, "disable-swagger", false, "disable Swagger UI")
 	cmd.Flags().StringVar(&prefix, "prefix", "", "prefix for protocol path")
 	cmd.Flags().BoolVar(&rawMode, "raw", false, "enable as raw protocol")
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
-		gwRaw, err := os.ReadFile(gatewayParams)
-		if err != nil {
-			return xerrors.Errorf("unable to read yaml config file: %w", err)
-		}
-		gw, err := gw_model.FromYaml(gwRaw)
-		if err != nil {
-			return xerrors.Errorf("unable to parse config file: %w", err)
+		var err error
+		var gw *gw_model.Config
+		if dbDSN != "" {
+			gw = &gw_model.Config{
+				API: gw_model.APIParams{
+					Name:        "Auto API",
+					Description: "Raw api for agent access",
+					Version:     "0.0.1",
+				},
+				Database: gw_model.Database{
+					Type:       dbType,
+					Connection: dbDSN,
+					Tables:     nil,
+				},
+			}
+		} else {
+			gwRaw, err := os.ReadFile(gatewayParams)
+			if err != nil {
+				return xerrors.Errorf("unable to read yaml config file: %w", err)
+			}
+			gw, err = gw_model.FromYaml(gwRaw)
+			if err != nil {
+				return xerrors.Errorf("unable to parse config file: %w", err)
+			}
 		}
 		mux := http.NewServeMux()
 		a, err := restgenerator.New(*gw, prefix)
