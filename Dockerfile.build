@@ -14,7 +14,7 @@ ARG TARGETARCH=amd64
 COPY . .
 
 # Build the binary with platform-specific settings
-RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -o gateway
+RUN CGO_ENABLED=1 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -o gateway
 
 # Final stage
 FROM alpine:3.19
