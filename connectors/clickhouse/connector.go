@@ -4,6 +4,7 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	"github.com/ClickHouse/clickhouse-go/v2"
 	"strings"
 
 	"github.com/centralmind/gateway/connectors"
@@ -20,14 +21,14 @@ import (
 var docString string
 
 func init() {
-	connectors.Register(func(cfg Config) (connectors.Connector, error) {
+	connectors.Register(func(cfg *Config) (connectors.Connector, error) {
 		dsn := cfg.MakeDSN()
 		db, err := sqlx.Open("clickhouse", dsn)
 		if err != nil {
 			return nil, xerrors.Errorf("unable to open ClickHouse db: %w", err)
 		}
 		return &Connector{
-			config: cfg,
+			config: *cfg,
 			db:     db,
 			base:   &connectors.BaseConnector{DB: db},
 		}, nil
@@ -66,13 +67,18 @@ func (c *Config) UnmarshalYAML(value *yaml.Node) error {
 	return nil
 }
 
-func (c Config) ExtraPrompt() []string {
+func (c *Config) ExtraPrompt() []string {
 	return []string{}
 }
 
-func (c Config) MakeDSN() string {
+func (c *Config) MakeDSN() string {
 	// If connection string is provided, use it directly
 	if c.ConnString != "" {
+		cfg, err := clickhouse.ParseDSN(c.ConnString)
+		if err != nil {
+			panic(err)
+		}
+		c.Database = cfg.Auth.Database
 		return c.ConnString
 	}
 
@@ -91,11 +97,11 @@ func (c Config) MakeDSN() string {
 	return fmt.Sprintf("%s://%s:%s@%s:%d/%s", protocol, c.User, c.Password, host, c.Port, c.Database)
 }
 
-func (c Config) Type() string {
+func (c *Config) Type() string {
 	return "clickhouse"
 }
 
-func (c Config) Doc() string {
+func (c *Config) Doc() string {
 	return docString
 }
 
@@ -106,7 +112,7 @@ type Connector struct {
 }
 
 func (c Connector) Config() connectors.Config {
-	return c.config
+	return &c.config
 }
 
 func (c Connector) Sample(ctx context.Context, table model.Table) ([]map[string]any, error) {
@@ -213,7 +219,7 @@ func (c Connector) LoadsColumns(ctx context.Context, tableName string) ([]model.
 			return nil, err
 		}
 		columns = append(columns, model.ColumnSchema{
-			Name:       name,
+			Name:       fmt.Sprintf(`"%s"."%s"`, c.config.Database, name),
 			Type:       c.GuessColumnType(dataType),
 			PrimaryKey: isPrimaryKey,
 		})
