@@ -42,56 +42,54 @@ func New(
 	if err != nil {
 		return nil, xerrors.Errorf("unable to init connector plugins: %w", err)
 	}
-	for _, info := range schema.Database.Tables {
-		for _, endpoint := range info.Endpoints {
-			var opts []mcp.ToolOption
-			for _, col := range endpoint.Params {
-				if col.Required {
-					opts = append(opts, ArgumentOption(col, mcp.Required()))
-				} else {
-					opts = append(opts, ArgumentOption(col))
+	for _, endpoint := range schema.Database.Endpoints {
+		var opts []mcp.ToolOption
+		for _, col := range endpoint.Params {
+			if col.Required {
+				opts = append(opts, ArgumentOption(col, mcp.Required()))
+			} else {
+				opts = append(opts, ArgumentOption(col))
+			}
+		}
+
+		srv.AddTool(mcp.NewTool(
+			endpoint.MCPMethod,
+			opts...,
+		), func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			arg := request.Params.Arguments
+			for _, param := range endpoint.Params {
+				if _, ok := arg[param.Name]; !ok {
+					arg[param.Name] = nil
 				}
 			}
-
-			srv.AddTool(mcp.NewTool(
-				endpoint.MCPMethod,
-				opts...,
-			), func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-				arg := request.Params.Arguments
-				for _, param := range endpoint.Params {
-					if _, ok := arg[param.Name]; !ok {
-						arg[param.Name] = nil
-					}
-				}
-				res, err := connector.Query(ctx, endpoint, request.Params.Arguments)
-				if err != nil {
-					return &mcp.CallToolResult{
-						Content: []mcp.Content{
-							mcp.TextContent{
-								Type: "text",
-								Text: fmt.Sprintf("Unable to query: %s", err),
-							},
+			res, err := connector.Query(ctx, endpoint, request.Params.Arguments)
+			if err != nil {
+				return &mcp.CallToolResult{
+					Content: []mcp.Content{
+						mcp.TextContent{
+							Type: "text",
+							Text: fmt.Sprintf("Unable to query: %s", err),
 						},
-						IsError: true,
-					}, nil
-				}
-				var content []mcp.Content
+					},
+					IsError: true,
+				}, nil
+			}
+			var content []mcp.Content
+			content = append(content, mcp.TextContent{
+				Type: "text",
+				Text: fmt.Sprintf("Found a %v row-(s) in %s.", len(res), endpoint.Group),
+			})
+			for _, row := range res {
 				content = append(content, mcp.TextContent{
 					Type: "text",
-					Text: fmt.Sprintf("Found a %v row-(s) in %s.", len(res), info.Name),
+					Text: jsonify(row),
 				})
-				for _, row := range res {
-					content = append(content, mcp.TextContent{
-						Type: "text",
-						Text: jsonify(row),
-					})
-				}
+			}
 
-				return &mcp.CallToolResult{
-					Content: content,
-				}, nil
-			})
-		}
+			return &mcp.CallToolResult{
+				Content: content,
+			}, nil
+		})
 	}
 
 	return &MCPServer{

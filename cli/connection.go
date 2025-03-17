@@ -21,9 +21,10 @@ import (
 )
 
 func Connection() *cobra.Command {
-	var configPath string
 	var tables string
 	var samplePath string
+	var dbDSN string
+	var typ string
 
 	cmd := &cobra.Command{
 		Use:   "verify",
@@ -40,24 +41,24 @@ The command performs the following steps:
 2. Connect to the database and discover table schemas
 3. Display schema information and sample data for each table
 4. Save the discovered information to a YAML file for reference`,
-		Args:  cobra.MaximumNArgs(0),
+		Args: cobra.MaximumNArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Configure header
 			logrus.Info("\r\n")
 			logrus.Info("🚀 Verify Discovery Process")
-
-			// Read configuration file
-			configRaw, err := os.ReadFile(configPath)
-			if err != nil {
-				return err
+			if typ == "" {
+				typ = strings.Split(dbDSN, ":")[0]
 			}
-
+			connector, err := connectors.New(typ, dbDSN)
+			if err != nil {
+				return xerrors.Errorf("Failed to create connector: %w", err)
+			}
 			// Retrieve table data and verify connection
-			tablesData, _, err := TablesData(splitTables(tables), configRaw)
+			tablesData, err := TablesData(splitTables(tables), connector)
 			if err != nil {
 				return xerrors.Errorf("unable to verify connection: %w", err)
 			}
-			
+
 			// Display schema and sample data for each table
 			for _, t := range tablesData {
 				logrus.Infof("Schema for: %s", t.Name)
@@ -75,7 +76,8 @@ The command performs the following steps:
 		},
 	}
 
-	cmd.Flags().StringVar(&configPath, "config", "connection.yaml", "Path to database connection configuration file")
+	cmd.Flags().StringVarP(&dbDSN, "connection-string", "C", "", "Database connection string (DSN) for direct database connection")
+	cmd.Flags().StringVar(&typ, "type", "", "Type of database to use (default: postgres)")
 	cmd.Flags().StringVar(&tables, "tables", "", "Comma-separated list of tables to include (e.g., 'users,products,orders')")
 	cmd.Flags().StringVar(&samplePath, "llm-log", filepath.Join(logger.DefaultLogDir(), "sample.yaml"), "Path to save the discovered table schemas and sample data")
 
@@ -98,22 +100,15 @@ type dbType struct {
 	Type string `yaml:"type" json:"type"`
 }
 
-func TablesData(tablesList []string, configRaw any) ([]prompter.TableData, connectors.Connector, error) {
+func TablesData(tablesList []string, connector connectors.Connector) ([]prompter.TableData, error) {
 	logrus.Info("Step 1: Read configs")
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
-	connector, err := connectors.New(inferType(configRaw), configRaw)
-	if err != nil {
-		return nil, nil, xerrors.Errorf("unable to create connector: %s: %w", inferType(configRaw), err)
-	}
-	logrus.Info("✅ Step 1 completed. Done.")
-	logrus.Info("\r\n")
-
 	logrus.Info("Step 2: Discover data")
 	allTables, err := connector.Discovery(ctx)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	tableSet := map[string]bool{}
@@ -141,7 +136,7 @@ func TablesData(tablesList []string, configRaw any) ([]prompter.TableData, conne
 		filteredTablesCount++
 	}
 	if filteredTablesCount == 0 {
-		return nil, nil, xerrors.Errorf("error: no tables found to process. Please verify your database connection and table selection criteria")
+		return nil, xerrors.Errorf("error: no tables found to process. Please verify your database connection and table selection criteria")
 	}
 
 	logrus.Info("✅ Step 2 completed. Done.")
@@ -155,7 +150,7 @@ func TablesData(tablesList []string, configRaw any) ([]prompter.TableData, conne
 		}
 		sample, err := connector.Sample(ctx, table)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		tablesToGenerate = append(tablesToGenerate, prompter.TableData{
 			Columns:  table.Columns,
@@ -172,7 +167,7 @@ func TablesData(tablesList []string, configRaw any) ([]prompter.TableData, conne
 	}
 	logrus.Info("✅ Step 3 completed. Done.")
 	logrus.Info("\r\n")
-	return tablesToGenerate, connector, nil
+	return tablesToGenerate, nil
 }
 
 func inferType(configRaw any) string {

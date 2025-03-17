@@ -63,113 +63,111 @@ func Schema(schema model.Config, prefix string, addresses ...string) (*huma.Open
 	}
 
 	// Iterate through tables and generate OpenAPI schemas
-	for _, info := range schema.Database.Tables {
-		for _, endpoint := range info.Endpoints {
-			cols, err := connector.InferQuery(context.Background(), endpoint.Query)
-			if err != nil {
-				logrus.Warnf("unable to infer query %s: %v", endpoint.Query, err)
+	for _, endpoint := range schema.Database.Endpoints {
+		cols, err := connector.InferQuery(context.Background(), endpoint.Query)
+		if err != nil {
+			logrus.Warnf("unable to infer query %s: %v", endpoint.Query, err)
+		}
+		schemaProps := map[string]*huma.Schema{}
+		for _, col := range cols {
+			schemaProps[col.Name] = &huma.Schema{
+				Type: string(col.Type),
 			}
-			schemaProps := map[string]*huma.Schema{}
-			for _, col := range cols {
+			if col.Type == model.TypeDatetime {
 				schemaProps[col.Name] = &huma.Schema{
-					Type: string(col.Type),
-				}
-				if col.Type == model.TypeDatetime {
-					schemaProps[col.Name] = &huma.Schema{
-						Type:   "string",
-						Format: "date-time",
-					}
+					Type:   "string",
+					Format: "date-time",
 				}
 			}
+		}
 
-			var params []*huma.Param
-			for _, param := range endpoint.Params {
-				if param.Location == "" {
-					param.Location = "query"
-				}
-				params = append(params, &huma.Param{
-					Name:     param.Name,
-					In:       param.Location,
-					Required: param.Required,
-					Schema: &huma.Schema{
-						Type:    param.Type,
-						Format:  param.Format,
-						Default: param.Default,
-					},
-				})
+		var params []*huma.Param
+		for _, param := range endpoint.Params {
+			if param.Location == "" {
+				param.Location = "query"
 			}
-			resSchema := &huma.Schema{
-				Type:       "object",
-				Properties: schemaProps,
+			params = append(params, &huma.Param{
+				Name:     param.Name,
+				In:       param.Location,
+				Required: param.Required,
+				Schema: &huma.Schema{
+					Type:    param.Type,
+					Format:  param.Format,
+					Default: param.Default,
+				},
+			})
+		}
+		resSchema := &huma.Schema{
+			Type:       "object",
+			Properties: schemaProps,
+		}
+		if endpoint.IsArrayResult {
+			resSchema = &huma.Schema{
+				Type:  "array",
+				Items: resSchema,
 			}
-			if endpoint.IsArrayResult {
-				resSchema = &huma.Schema{
-					Type:  "array",
-					Items: resSchema,
-				}
-			}
-			operation := &huma.Operation{
-				Summary:     endpoint.Summary,
-				Description: endpoint.Description,
-				OperationID: endpoint.MCPMethod,
-				Tags:        []string{info.Name},
-				Parameters:  params,
-				Responses: map[string]*huma.Response{
-					"200": {
-						Description: "Success",
-						Content: map[string]*huma.MediaType{
-							"application/json": {
-								Schema: resSchema,
-							},
+		}
+		operation := &huma.Operation{
+			Summary:     endpoint.Summary,
+			Description: endpoint.Description,
+			OperationID: endpoint.MCPMethod,
+			Tags:        []string{endpoint.Group},
+			Parameters:  params,
+			Responses: map[string]*huma.Response{
+				"200": {
+					Description: "Success",
+					Content: map[string]*huma.MediaType{
+						"application/json": {
+							Schema: resSchema,
 						},
 					},
-					"404": {
-						Description: "Not Found",
-						Content: map[string]*huma.MediaType{
-							"application/json": {
-								Schema: &huma.Schema{
-									Type: "object",
-									Properties: map[string]*huma.Schema{
-										"error": {Type: "string"},
-									},
-								},
-							},
-						},
-					},
-					"500": {
-						Description: "Error",
-						Content: map[string]*huma.MediaType{
-							"application/json": {
-								Schema: &huma.Schema{
-									Type: "object",
-									Properties: map[string]*huma.Schema{
-										"error": {Type: "string"},
-									},
+				},
+				"404": {
+					Description: "Not Found",
+					Content: map[string]*huma.MediaType{
+						"application/json": {
+							Schema: &huma.Schema{
+								Type: "object",
+								Properties: map[string]*huma.Schema{
+									"error": {Type: "string"},
 								},
 							},
 						},
 					},
 				},
-			}
-			httpPath := endpoint.HTTPPath
-			if prefix != "" {
-				httpPath = path.Join("/", prefix, httpPath)
-			}
-			if _, ok := api.Paths[httpPath]; !ok {
-				api.Paths[httpPath] = &huma.PathItem{}
-			}
-			switch endpoint.HTTPMethod {
-			case "GET":
-				api.Paths[httpPath].Get = operation
-			case "DELETE":
-				api.Paths[httpPath].Delete = operation
-			case "POST":
-				api.Paths[httpPath].Post = operation
-			case "PATCH":
-				api.Paths[httpPath].Patch = operation
-			case "PUT":
-				api.Paths[httpPath].Put = operation
-			}
+				"500": {
+					Description: "Error",
+					Content: map[string]*huma.MediaType{
+						"application/json": {
+							Schema: &huma.Schema{
+								Type: "object",
+								Properties: map[string]*huma.Schema{
+									"error": {Type: "string"},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+		httpPath := endpoint.HTTPPath
+		if prefix != "" {
+			httpPath = path.Join("/", prefix, httpPath)
+		}
+		if _, ok := api.Paths[httpPath]; !ok {
+			api.Paths[httpPath] = &huma.PathItem{}
+		}
+		switch endpoint.HTTPMethod {
+		case "GET":
+			api.Paths[httpPath].Get = operation
+		case "DELETE":
+			api.Paths[httpPath].Delete = operation
+		case "POST":
+			api.Paths[httpPath].Post = operation
+		case "PATCH":
+			api.Paths[httpPath].Patch = operation
+		case "PUT":
+			api.Paths[httpPath].Put = operation
 		}
 	}
 

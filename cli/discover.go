@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	_ "embed"
+	"github.com/centralmind/gateway/connectors"
 	"log"
 	"os"
 	"path/filepath"
@@ -44,7 +45,6 @@ func init() {
 }
 
 func Discover() *cobra.Command {
-	var configPath string
 	var tables string
 	var aiProvider string
 	var aiEndpoint string
@@ -60,6 +60,8 @@ func Discover() *cobra.Command {
 	var extraPrompt string
 	var promptFile string
 	var llmLogFile string
+	var dbDSN string
+	var typ string
 
 	cmd := &cobra.Command{
 		Use:   "discover",
@@ -79,32 +81,35 @@ The discovery process follows these steps:
 
 This approach significantly reduces the time needed to create gateway configurations
 and ensures they follow best practices for AI agent interactions.`,
-		Args:  cobra.MatchAll(cobra.ExactArgs(0)),
+		Args: cobra.MatchAll(cobra.ExactArgs(0)),
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			startTime := time.Now()
 
 			logrus.Info("\r\n")
 			logrus.Info("🚀 Verify Discovery Process")
 
-			configRaw, err := os.ReadFile(configPath)
+			if typ == "" {
+				typ = strings.Split(dbDSN, ":")[0]
+			}
+			connector, err := connectors.New(typ, dbDSN)
 			if err != nil {
-				return err
+				return xerrors.Errorf("Failed to create connector: %w", err)
 			}
 
-			resolvedTables, connector, err := TablesData(splitTables(tables), configRaw)
+			resolvedTables, err := TablesData(splitTables(tables), connector)
 			if err != nil {
 				return xerrors.Errorf("unable to verify connection: %w", err)
 			}
 
-			databaseType := inferType(configRaw)
+			databaseType := connector.Config().Type()
 
 			logrus.Info("Step 4: Prepare the prompt for the AI")
-			discoverPrompt := prompter.DiscoverPrompt(connector, extraPrompt, resolvedTables, prompter.SchemaFromConfig(connector.Config()))
+			discoverPrompt := prompter.DiscoverEndpointsPrompt(connector, extraPrompt, resolvedTables, prompter.SchemaFromConfig(connector.Config()))
 			if err := saveToFile(promptFile, discoverPrompt); err != nil {
 				logrus.Error("failed to save prompt:", err)
 			}
 
-			logrus.Debugf("Prompt saved locally to %s", promptFile)
+			logrus.Infof("Prompt saved locally to %s", promptFile)
 			logrus.Info("✅ Step 4 completed. Done.")
 			logrus.Info("\r\n")
 
@@ -129,20 +134,19 @@ and ensures they follow best practices for AI agent interactions.`,
 				return err
 			}
 
-			config := response.Config
+			var config gw_model.Config
 
 			// Show generated API endpoints
 			var apiEndpoints int
 			logrus.Info("API Functions Created:")
-			for _, table := range config.Database.Tables {
-				for _, endpoint := range table.Endpoints {
-					logrus.Infof("  - "+cyan+"%s"+reset+" "+violet+"%s"+reset+" - %s", endpoint.HTTPMethod, endpoint.HTTPPath, endpoint.Summary)
-					apiEndpoints++
-				}
+			for _, endpoint := range response.Endpoints {
+				logrus.Infof("  - "+cyan+"%s"+reset+" "+violet+"%s"+reset+" - %s", endpoint.HTTPMethod, endpoint.HTTPPath, endpoint.Summary)
+				apiEndpoints++
 			}
 
 			config.Database.Type = databaseType
-			config.Database.Connection = string(configRaw)
+			config.Database.Connection = dbDSN
+			config.Database.Endpoints = response.Endpoints
 
 			// Save configuration
 			configData, err := yaml.Marshal(config)
@@ -175,23 +179,12 @@ and ensures they follow best practices for AI agent interactions.`,
 			logrus.Infof("Tables processed: "+yellow+"%d"+reset, len(resolvedTables))
 			logrus.Infof("API methods created: "+yellow+"%d"+reset, apiEndpoints)
 
-			// Count PII columns from the generated config
-			var piiColumnsCount int
-			for _, table := range config.Database.Tables {
-				for _, column := range table.Columns {
-					if column.PII {
-						piiColumnsCount++
-					}
-				}
-			}
-
-			logrus.Infof("Total number of columns containing PII data: "+yellow+"%d"+reset, piiColumnsCount)
-
 			return nil
 		},
 	}
 
-	cmd.Flags().StringVar(&configPath, "config", "connection.yaml", "Path to database connection configuration file")
+	cmd.Flags().StringVarP(&dbDSN, "connection-string", "C", "", "Database connection string (DSN) for direct database connection")
+	cmd.Flags().StringVar(&typ, "type", "", "Type of database to use (default: postgres)")
 	cmd.Flags().StringVar(&tables, "tables", "", "Comma-separated list of tables to include (e.g., 'users,products,orders')")
 
 	/*
@@ -231,7 +224,7 @@ type DiscoverQueryParams struct {
 }
 
 type DiscoverQueryResponse struct {
-	Config       *gw_model.Config
+	Endpoints    []gw_model.Endpoint `yaml:"endpoints"`
 	Conversation *providers.ConversationResponse
 	RawContent   string
 	CostEstimate float64
@@ -303,10 +296,10 @@ func makeDiscoverQuery(params DiscoverQueryParams, prompt string) (DiscoverQuery
 		"Output tokens": llmResponse.Usage.OutputTokens,
 	}).Info("LLM usage:")
 
-	var response gw_model.Config
+	var response DiscoverQueryResponse
 	if err := yaml.Unmarshal([]byte(rawContent), &response); err != nil {
 		return DiscoverQueryResponse{
-			Config:       nil,
+			Endpoints:    nil,
 			Conversation: llmResponse,
 			RawContent:   rawContent,
 			CostEstimate: costEstimate,
@@ -314,7 +307,7 @@ func makeDiscoverQuery(params DiscoverQueryParams, prompt string) (DiscoverQuery
 	}
 
 	return DiscoverQueryResponse{
-		Config:       &response,
+		Endpoints:    response.Endpoints,
 		Conversation: llmResponse,
 		RawContent:   rawContent,
 		CostEstimate: costEstimate,

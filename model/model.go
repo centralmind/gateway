@@ -106,16 +106,15 @@ type APIParams struct {
 }
 
 type Database struct {
-	Type       string  `yaml:"type" json:"type,omitempty"`
-	Connection any     `yaml:"connection" json:"connection,omitempty"`
-	Tables     []Table `yaml:"tables" json:"tables,omitempty"`
+	Type       string     `yaml:"type" json:"type,omitempty"`
+	Connection any        `yaml:"connection" json:"connection,omitempty"`
+	Endpoints  []Endpoint `yaml:"endpoints" json:"endpoints,omitempty"`
 }
 
 type Table struct {
-	Name      string         `yaml:"name" json:"name,omitempty"`
-	Columns   []ColumnSchema `yaml:"columns" json:"columns,omitempty"`
-	Endpoints []Endpoint     `yaml:"endpoints" json:"endpoints,omitempty"`
-	RowCount  int            `yaml:"row_count" json:"row_count,omitempty"`
+	Name     string         `yaml:"name" json:"name,omitempty"`
+	Columns  []ColumnSchema `yaml:"columns" json:"columns,omitempty"`
+	RowCount int            `yaml:"row_count" json:"row_count,omitempty"`
 }
 
 type ColumnSchema struct {
@@ -126,6 +125,7 @@ type ColumnSchema struct {
 }
 
 type Endpoint struct {
+	Group         string           `yaml:"group" json:"group,omitempty"`
 	HTTPMethod    string           `yaml:"http_method" json:"http_method,omitempty"`
 	HTTPPath      string           `yaml:"http_path" json:"path,omitempty"`
 	MCPMethod     string           `yaml:"mcp_method" json:"mcp_method,omitempty"`

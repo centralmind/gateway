@@ -11,34 +11,38 @@ import (
 )
 
 var (
-	//go:embed api_config_schema.json
+	//go:embed endpoints_schema.json
 	apiConfigSchema []byte
 
-	discoverBasePrompt = `
+	endpointsPrompt = `
 !Important rules:
-	- The most important: The final output must contain *only valid single JSON* with no additional commentary, explanations, or markdown formatting!
+	- The final output must contain *only valid single JSON* with no additional commentary, explanations, or markdown formatting!
 	- The JSON configuration must strictly adhere to the provided JSON schema, including all required fields.
 	- You must always match all parameter names. Ensure you use the same name for the same entity, especially in HTTP routes. Use full names for parameters in HTTP routes, such as "userId" instead of "id".
 	- Description of API endpoints should also have an example, to help chatbot to use it.
-	- All descriptions and summary must not have any sensitive information/data from security point of view including database types, password and etc.
 	- All SQL queries must be Pure SQL that will be used in golang SQLx on top of database - {database_type} and be fully parameterized (using named parameters) to prevent SQL injection.
 	- Do not generate output schema for endpoints.
 	- All SQL queries must be verified that they will not return array of data where expected one item.
 	- SQL queries should be optimized for {database_type} and use appropriate indexes.
 	- Endpoints that return lists must include pagination parameters (offset and limit).
 	- Consistent Endpoint Definitions: Each table defined in the DDL should have corresponding endpoints as specified by the JSON schema, including method, path, description, SQL query, and parameters.
-	- Sensitive Data Handling: If any columns contain sensitive or PII data like phone number, SSN, address, credit card etc, they must be flagged appropriately (e.g., using a "pii" flag).
-	- Each Parameter in API endpoints may have default value taken from corresponded example rows, only if it's not PII or sensitive data
 	- If some entity requires pagination, there should be separate API that calculates total_count, so pagination can be queried
 	- For Postgres, use all table names and column names in double quotes, e.g., "table_name" and "column_name". 
 	- If a schema is specified in the table name (format: schema.table), use it in your queries appropriately for the database type. For Postgres, this would be "schema"."table_name".
 `
+	piiReportPrompt = `
+!Important rules:
+	- The final output must contain *only valid single JSON* with no additional commentary, explanations, or markdown formatting!
+	- The JSON configuration must strictly adhere to the provided JSON schema, including all required fields.
+	- Analyze endpoints generated against endpoint definitions.
+	- Detect where is PII or sensitive data located in data samples
+`
 )
 
-func DiscoverPrompt(connector connectors.Connector, extraPrompt string, tables []TableData, schema string) string {
+func DiscoverEndpointsPrompt(connector connectors.Connector, extraPrompt string, tables []TableData, schema string) string {
 	res := "I need a config for an automatic API that will be used by another AI bot or LLMs..."
 	res += "\n"
-	res += strings.ReplaceAll(discoverBasePrompt, "{database_type}", connector.Config().Type())
+	res += strings.ReplaceAll(endpointsPrompt, "{database_type}", connector.Config().Type())
 	for _, extraPrompt := range connector.Config().ExtraPrompt() {
 		res += res + "	-" + extraPrompt + "\n"
 	}

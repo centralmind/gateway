@@ -25,7 +25,7 @@ func StartCommand() *cobra.Command {
 	var disableSwagger bool
 	var prefix string
 	var dbDSN string
-	var dbType string
+	var typ string
 	var enableMCP bool
 	var enableRestAPI bool
 
@@ -46,7 +46,7 @@ Upon successful startup, the terminal will display URLs for both services.`,
 	cmd.PersistentFlags().StringVar(&servers, "servers", "", "Comma-separated list of additional server URLs for Swagger UI (e.g., 'https://dev1.example.com,https://dev2.example.com')")
 
 	cmd.Flags().StringVarP(&dbDSN, "connection-string", "C", "", "Database connection string (DSN) for direct database connection")
-	cmd.Flags().StringVar(&dbType, "type", "postgres", "Type of database to use (default: postgres)")
+	cmd.Flags().StringVar(&typ, "type", "", "Type of database to use (default: postgres)")
 	cmd.Flags().BoolVar(&disableSwagger, "disable-swagger", false, "Disable Swagger UI documentation")
 	cmd.Flags().StringVar(&prefix, "prefix", "", "URL prefix for all API endpoints")
 	cmd.Flags().BoolVar(&enableMCP, "mcp", true, "Start MCP SSE server")
@@ -56,8 +56,8 @@ Upon successful startup, the terminal will display URLs for both services.`,
 		var err error
 		var gw *gw_model.Config
 		if dbDSN != "" {
-			if dbType == "" {
-				dbType = strings.Split(dbDSN, ":")[0]
+			if typ == "" {
+				typ = strings.Split(dbDSN, ":")[0]
 			}
 			// Create a default configuration when using direct database connection
 			gw = &gw_model.Config{
@@ -67,9 +67,9 @@ Upon successful startup, the terminal will display URLs for both services.`,
 					Version:     "0.0.1",
 				},
 				Database: gw_model.Database{
-					Type:       dbType,
+					Type:       typ,
 					Connection: dbDSN,
-					Tables:     nil,
+					Endpoints:  nil,
 				},
 			}
 		} else {

@@ -1,0 +1,84 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "API Configuration Schema",
+  "type": "object",
+  "properties": {
+    "endpoints": {
+      "type": "array",
+      "description": "List of API endpoints configuration",
+      "items": {
+        "type": "object",
+        "properties": {
+          "http_method": {
+            "type": "string",
+            "description": "HTTP method (e.g., GET, POST)."
+          },
+          "mcp_method": {
+            "type": "string",
+            "description": "Machine readable name for MCP-tool name (e.g. get_order_for_customer)."
+          },
+          "is_array_result": {
+            "type": "boolean",
+            "description": "Indicates if the endpoint returns an array of items (true) or a single item (false).",
+            "default": true
+          },
+          "http_path": {
+            "type": "string",
+            "description": "URL path with placeholders for path parameters."
+          },
+          "group": {
+            "type": "string",
+            "description": "Logical group of endpoint, usually bounded to type of entity this endpoint is related."
+          },
+          "summary": {
+            "type": "string",
+            "description": "A short summary of the endpoint."
+          },
+          "description": {
+            "type": "string",
+            "description": "A detailed description of the endpoint."
+          },
+          "query": {
+            "type": "string",
+            "description": "SQL query to execute."
+          },
+          "params": {
+            "type": "array",
+            "description": "List of parameter definitions for the endpoint.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "The parameter name."
+                },
+                "type": {
+                  "type": "string",
+                  "description": "Data type of the parameter (e.g., string, number)."
+                },
+                "required": {
+                  "type": "boolean",
+                  "description": "Whether the parameter is required."
+                },
+                "location": {
+                  "type": "string",
+                  "description": "Where this parameter is located. One of: path, query or body"
+                },
+                "default": {
+                  "description": "Default value if the parameter is not provided."
+                }
+              },
+              "required": ["name", "type", "location"]
+            }
+          },
+          "output_schema": {
+            "type": "object",
+            "description": "Output JSON schema for the endpoint."
+          }
+        },
+        "required": ["http_method", "http_path", "query", "params"]
+      }
+    }
+  },
+  "required": ["endpoints"]
+}
