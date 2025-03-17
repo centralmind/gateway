@@ -63,6 +63,11 @@ run-tests:
 login-ghcr:
 	echo "${GHCR_TOKEN}" | docker login ghcr.io -u ${GITHUB_USERNAME} --password-stdin
 
+# Define variables
+HELM_CHART_PATH := ./helm/gateway
+IMAGE_NAME := ghcr.io/centralmind/gateway-helm
+VERSION := $(shell grep '^version:' $(HELM_CHART_PATH)/Chart.yaml | awk '{print $$2}')
+
 # Package the Helm chart
 .PHONY: helm-package
 helm-package:
