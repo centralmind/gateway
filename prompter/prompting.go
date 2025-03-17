@@ -58,12 +58,16 @@ func TablesPrompt(tables []TableData, schema string) string {
 		// Apply schema to table name if schema is provided and not empty
 		var tableName string
 
-		if schema != "" {
-			// Qualify the table name with schema
-			tableName = fmt.Sprintf("%s.%s", schema, table.Name)
+		if !strings.Contains(table.Name, ".") {
+			if schema != "" {
+				// Qualify the table name with schema
+				tableName = fmt.Sprintf("%s.%s", schema, table.Name)
+			} else {
+				// Use the table name as is
+				tableName = fmt.Sprintf("%s.%s", "public", table.Name)
+			}
 		} else {
-			// Use the table name as is
-			tableName = fmt.Sprintf("%s.%s", "public", table.Name)
+			tableName = table.Name
 		}
 
 		res += fmt.Sprintf(`
