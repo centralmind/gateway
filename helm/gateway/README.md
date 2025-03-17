@@ -31,7 +31,7 @@ If the Gateway Helm chart is published to a repository, you can add it to your H
 
 ```bash
 # Add the Gateway Helm repository
-helm repo add gateway-repo https://your-repo-url.com/charts
+helm repo add gateway-repo oci://ghcr.io/centralmind/gateway-helm/gateway
 helm repo update
 ```
 
