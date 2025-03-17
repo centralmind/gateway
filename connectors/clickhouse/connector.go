@@ -160,7 +160,7 @@ func (c Connector) Discovery(ctx context.Context) ([]model.Table, error) {
 		}
 
 		table := model.Table{
-			Name:     tableName,
+			Name:     fmt.Sprintf(`"%s"."%s"`, c.config.Database, tableName),
 			Columns:  columns,
 			RowCount: rowCount,
 		}
@@ -219,7 +219,7 @@ func (c Connector) LoadsColumns(ctx context.Context, tableName string) ([]model.
 			return nil, err
 		}
 		columns = append(columns, model.ColumnSchema{
-			Name:       fmt.Sprintf(`"%s"."%s"`, c.config.Database, name),
+			Name:       name,
 			Type:       c.GuessColumnType(dataType),
 			PrimaryKey: isPrimaryKey,
 		})
