@@ -77,7 +77,7 @@ The command performs the following steps:
 	}
 
 	cmd.Flags().StringVarP(&dbDSN, "connection-string", "C", "", "Database connection string (DSN) for direct database connection")
-	cmd.Flags().StringVar(&typ, "type", "", "Type of database to use (default: postgres)")
+	cmd.Flags().StringVar(&typ, "type", "", "Type of database to use (for example: postgres os mysql)")
 	cmd.Flags().StringVar(&tables, "tables", "", "Comma-separated list of tables to include (e.g., 'users,products,orders')")
 	cmd.Flags().StringVar(&samplePath, "llm-log", filepath.Join(logger.DefaultLogDir(), "sample.yaml"), "Path to save the discovered table schemas and sample data")
 

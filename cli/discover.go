@@ -184,7 +184,7 @@ and ensures they follow best practices for AI agent interactions.`,
 	}
 
 	cmd.Flags().StringVarP(&dbDSN, "connection-string", "C", "", "Database connection string (DSN) for direct database connection")
-	cmd.Flags().StringVar(&typ, "type", "", "Type of database to use (default: postgres)")
+	cmd.Flags().StringVar(&typ, "type", "", "Type of database to use (for example: postgres os mysql)")
 	cmd.Flags().StringVar(&tables, "tables", "", "Comma-separated list of tables to include (e.g., 'users,products,orders')")
 
 	/*

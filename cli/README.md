@@ -74,12 +74,13 @@ gateway discover [flags]
 - `--ai-reasoning` - Enable AI reasoning in the response for better explanation of design decisions (default: "true")
 - `--ai-temperature` - AI temperature for response randomness (0.0-1.0, lower is more deterministic) (default: "-1")
 - `--bedrock-region` - AWS region for Amazon Bedrock (required when using bedrock provider)
-- `--config` - Path to database connection configuration file (default: "connection.yaml")
+- `--connection-string` - Database connection string (DSN) for direct database connection
 - `--llm-log` - Path to save the raw AI response for debugging (default: "/Users/tserakhau/go/src/github.com/gateway/binaries/.gateway/llm_raw_response.log")
 - `--output` - Path to save the generated gateway configuration file (default: "gateway.yaml")
 - `--prompt` - Custom instructions for the AI to guide API generation (default: "generate reasonable set of APIs for this data")
 - `--prompt-file` - Path to save the generated AI prompt for inspection (default: "/Users/tserakhau/go/src/github.com/gateway/binaries/.gateway/prompt_default.txt")
 - `--tables` - Comma-separated list of tables to include (e.g., 'users,products,orders')
+- `--type` - Type of database to use (for example: postgres os mysql)
 - `--vertexai-project` - Google Cloud project ID for Vertex AI (required when using vertexai provider)
 - `--vertexai-region` - Google Cloud region for Vertex AI (required when using vertexai provider)
 
@@ -163,7 +164,7 @@ gateway start [flags]
 - `--prefix` - URL prefix for all API endpoints
 - `--raw` - Enable raw protocol mode optimized for AI agents (default: "true")
 - `--rest-api` - Start Rest API server (default: "true")
-- `--type` - Type of database to use (default: postgres) (default: "postgres")
+- `--type` - Type of database to use (for example: postgres os mysql)
 
 
 
@@ -213,9 +214,10 @@ gateway verify [flags]
 
 **Flags:**
 
-- `--config` - Path to database connection configuration file (default: "connection.yaml")
+- `--connection-string` - Database connection string (DSN) for direct database connection
 - `--llm-log` - Path to save the discovered table schemas and sample data (default: "/Users/tserakhau/go/src/github.com/gateway/binaries/.gateway/sample.yaml")
 - `--tables` - Comma-separated list of tables to include (e.g., 'users,products,orders')
+- `--type` - Type of database to use (for example: postgres os mysql)
 
 
 

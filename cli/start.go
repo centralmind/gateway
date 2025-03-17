@@ -46,7 +46,7 @@ Upon successful startup, the terminal will display URLs for both services.`,
 	cmd.PersistentFlags().StringVar(&servers, "servers", "", "Comma-separated list of additional server URLs for Swagger UI (e.g., 'https://dev1.example.com,https://dev2.example.com')")
 
 	cmd.Flags().StringVarP(&dbDSN, "connection-string", "C", "", "Database connection string (DSN) for direct database connection")
-	cmd.Flags().StringVar(&typ, "type", "", "Type of database to use (default: postgres)")
+	cmd.Flags().StringVar(&typ, "type", "", "Type of database to use (for example: postgres os mysql)")
 	cmd.Flags().BoolVar(&disableSwagger, "disable-swagger", false, "Disable Swagger UI documentation")
 	cmd.Flags().StringVar(&prefix, "prefix", "", "URL prefix for all API endpoints")
 	cmd.Flags().BoolVar(&enableMCP, "mcp", true, "Start MCP SSE server")
