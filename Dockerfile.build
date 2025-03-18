@@ -1,10 +1,10 @@
 # Build stage
-FROM golang:1.23-alpine AS builder
+FROM golang:1.23 AS builder
 
 WORKDIR /app
 
-# Install build dependencies
-RUN apk add --no-cache git make
+# Install build dependencies (Debian uses `apt` instead of `apk`)
+RUN apt-get update && apt-get install -y git make gcc g++ libc6-dev
 
 # Build args for cross-compilation
 ARG TARGETOS=linux
@@ -16,8 +16,8 @@ COPY . .
 # Build the binary with platform-specific settings
 RUN CGO_ENABLED=1 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -o gateway
 
-# Final stage
-FROM alpine:3.19
+# Final stage (Debian-based runtime)
+FROM debian:bookworm-slim
 
 ENV TZ=Etc/UTC \
     ROTATION_TZ=Etc/UTC \
@@ -27,7 +27,7 @@ RUN echo $TZ > /etc/timezone && \
     ln -snf /usr/share/zoneinfo/$TZ /etc/localtime
 
 # Create a non-root user and group
-RUN addgroup --system cligroup && adduser --system --ingroup cligroup cliuser
+RUN groupadd -r cligroup && useradd -r -g cligroup -m -d /home/cliuser cliuser
 
 # Copy the binary from builder
 COPY --from=builder /app/gateway /usr/local/bin/gw
@@ -35,6 +35,8 @@ COPY --from=builder /app/gateway /usr/local/bin/gw
 RUN chmod +x /usr/local/bin/gw && \
     chown cliuser:cligroup /usr/local/bin/gw
 
+
+ENV HOME=/home/cliuser
 # Switch to the non-root user
 USER cliuser
 

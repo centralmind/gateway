@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/centralmind/gateway/castx"
@@ -18,8 +17,22 @@ import (
 func init() {
 	connectors.Register[Config](func(cfg Config) (connectors.Connector, error) {
 		connStr := cfg.ConnectionString()
+		// Remove duckdb:// prefix if present
+		connStr = strings.TrimPrefix(connStr, "duckdb://")
 
-		db, err := sqlx.Connect("duckdb", connStr+"&access_mode=READ_ONLY")
+		safetyGuardRails := "access_mode=READ_ONLY&allow_community_extensions=false"
+
+		// Add READ_ONLY mode if connection string is not empty and not in-memory
+		if connStr != "" && !strings.Contains(connStr, ":memory:") {
+			if strings.Contains(connStr, "?") {
+				connStr += "&" + safetyGuardRails
+			} else {
+				connStr += "?" + safetyGuardRails
+			}
+		}
+
+		db, err := sqlx.Connect("duckdb", connStr)
+
 		if err != nil {
 			return nil, fmt.Errorf("unable to connect to duckdb: %v", err)
 		}
@@ -173,38 +186,43 @@ func (c Connector) Query(ctx context.Context, endpoint model.Endpoint, params ma
 		return nil, xerrors.Errorf("unable to process params: %w", err)
 	}
 
-	// Convert parameters to their proper types based on endpoint parameter definitions
-	for _, param := range endpoint.Params {
-		if value, ok := processed[param.Name]; ok {
-			switch param.Type {
-			case "integer":
-				if strVal, ok := value.(string); ok {
-					if intVal, err := strconv.Atoi(strVal); err == nil {
-						processed[param.Name] = intVal
-					}
-				}
-			case "number":
-				if strVal, ok := value.(string); ok {
-					if floatVal, err := strconv.ParseFloat(strVal, 64); err == nil {
-						processed[param.Name] = floatVal
-					}
-				}
-			case "boolean":
-				if strVal, ok := value.(string); ok {
-					if boolVal, err := strconv.ParseBool(strVal); err == nil {
-						processed[param.Name] = boolVal
-					}
-				}
-			case "date-time":
-				// Keep as string for date-time as DuckDB can handle ISO8601 strings
-				continue
-			case "string":
-				// No conversion needed for strings
-				continue
-			}
+	// If there are no parameters to process, use direct query execution
+	if len(processed) == 0 {
+		rows, err := c.db.QueryContext(ctx, endpoint.Query)
+		if err != nil {
+			return nil, xerrors.Errorf("unable to execute query: %w", err)
 		}
+		defer rows.Close()
+
+		// Get column names
+		columns, err := rows.Columns()
+		if err != nil {
+			return nil, xerrors.Errorf("unable to get columns: %w", err)
+		}
+
+		// Create a slice of interface{} to store the values
+		values := make([]interface{}, len(columns))
+		valuePtrs := make([]interface{}, len(columns))
+		for i := range values {
+			valuePtrs[i] = &values[i]
+		}
+
+		var result []map[string]any
+		for rows.Next() {
+			if err := rows.Scan(valuePtrs...); err != nil {
+				return nil, xerrors.Errorf("unable to scan row: %w", err)
+			}
+
+			row := make(map[string]any)
+			for i, col := range columns {
+				row[col] = values[i]
+			}
+			result = append(result, row)
+		}
+		return result, nil
 	}
 
+	// For parameterized queries, use transaction-based approach
 	tx, err := c.db.BeginTxx(ctx, &sql.TxOptions{
 		ReadOnly: c.Config().Readonly(),
 	})
@@ -281,5 +299,72 @@ func (c Connector) LoadsColumns(ctx context.Context, tableName string) ([]model.
 
 // InferQuery implements the Connector interface
 func (c *Connector) InferQuery(ctx context.Context, query string) ([]model.ColumnSchema, error) {
-	return c.base.InferResultColumns(ctx, query, c)
+	// Check if query contains any SQL parameters
+	// Look for :name, $1, or ? not inside quotes
+	hasParams := false
+	inQuote := false
+	quoteChar := rune(0)
+
+	for i, ch := range query {
+		// Handle quotes
+		if ch == '\'' || ch == '"' {
+			if !inQuote {
+				inQuote = true
+				quoteChar = ch
+			} else if ch == quoteChar {
+				// Check if it's an escaped quote
+				if i > 0 && query[i-1] != '\\' {
+					inQuote = false
+					quoteChar = rune(0)
+				}
+			}
+			continue
+		}
+
+		// Only check for parameters when not inside quotes
+		if !inQuote {
+			// Check for named parameters (:name)
+			if ch == ':' && i+1 < len(query) && (query[i+1] >= 'a' && query[i+1] <= 'z' || query[i+1] >= 'A' && query[i+1] <= 'Z') {
+				hasParams = true
+				break
+			}
+			// Check for positional parameters ($1)
+			if ch == '$' && i+1 < len(query) && query[i+1] >= '0' && query[i+1] <= '9' {
+				hasParams = true
+				break
+			}
+			// Check for question mark parameters
+			if ch == '?' {
+				hasParams = true
+				break
+			}
+		}
+	}
+
+	if hasParams {
+		return c.base.InferResultColumns(ctx, query, c)
+	}
+
+	// For queries without parameters, execute directly
+	rows, err := c.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, xerrors.Errorf("unable to execute query for inference: %w", err)
+	}
+	defer rows.Close()
+
+	// Get column types directly from the result
+	columnTypes, err := rows.ColumnTypes()
+	if err != nil {
+		return nil, xerrors.Errorf("unable to get column types: %w", err)
+	}
+
+	var columns []model.ColumnSchema
+	for _, col := range columnTypes {
+		columns = append(columns, model.ColumnSchema{
+			Name: col.Name(),
+			Type: c.GuessColumnType(col.DatabaseTypeName()),
+		})
+	}
+
+	return columns, nil
 }

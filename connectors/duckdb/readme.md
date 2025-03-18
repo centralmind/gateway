@@ -19,35 +19,65 @@ DuckDB connector allows querying DuckDB databases, which is an embedded analytic
 
 1. Using directory path in hosts:
 ```yaml
-type: duckdb
-hosts:
-  - ./data    # relative path to directory
-database: analytics.duckdb
+connection:
+  type: duckdb
+  hosts:
+    - ./data    # relative path to directory
+  database: analytics.duckdb
 ```
 
 2. Using full file path in hosts:
 ```yaml
-type: duckdb
-hosts:
-  - /absolute/path/to/analytics.duckdb    # Unix-style path
-  # or
-  - C:/Users/MyUser/data/analytics.duckdb  # Windows-style path
+connection:
+  type: duckdb
+  hosts:
+    - /absolute/path/to/analytics.duckdb    # Unix-style path
+    # or
+    - C:/Users/MyUser/data/analytics.duckdb  # Windows-style path
 ```
 
 3. Using relative file path:
 ```yaml
-type: duckdb
-hosts:
-  - ./data/analytics.duckdb
+connection:
+  type: duckdb
+  hosts:
+    - ./data/analytics.duckdb
 ```
 
 4. Using current directory:
 ```yaml
-type: duckdb
-hosts:
-  - .
-database: analytics.duckdb```
+connection:
+  type: duckdb
+  hosts:
+    - .
+  database: analytics.duckdb
+```
 
+5. Using in-memory mode, just leave connection section blank:
+```yaml
+connection:
+
+```
+6. Using in-memory mode, or just put ":memory:":
+```yaml
+connection: ":memory:"
+  
+```
+
+## Running Discovery and API
+You can also pass connection string as parameter, eg using absolute path on Linux:
+```
+./gateway discover --ai-provider gemin --connection-string "duckdb:///absolute/path/to/duckdb-demo.duckdb"
+```
+or on Windows
+```
+.\gateway discover --ai-provider gemini --connection-string  "duckdb://C:/path/duckdb-demo.duckdb"
+```
+
+Start server, it will use `gateway.yaml` generated from prev step:
+```
+./gateway start
+```
 
 
 ## Path Resolution
