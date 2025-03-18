@@ -15,6 +15,7 @@ type Config interface {
 	Type() string
 	Doc() string
 	ExtraPrompt() []string
+	Readonly() bool
 }
 
 type Connector interface {

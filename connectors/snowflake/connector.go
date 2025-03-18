@@ -2,6 +2,7 @@ package snowflake
 
 import (
 	"context"
+	"database/sql"
 	_ "embed"
 	"fmt"
 	"strings"
@@ -45,7 +46,12 @@ type Config struct {
 	Warehouse  string
 	Schema     string
 	Role       string
-	ConnString string
+	ConnString string `yaml:"conn_string"`
+	IsReadonly bool   `yaml:"is_readonly"`
+}
+
+func (c Config) Readonly() bool {
+	return c.IsReadonly
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface to allow for both
@@ -104,7 +110,15 @@ func (c Connector) Config() connectors.Config {
 }
 
 func (c Connector) Sample(ctx context.Context, table model.Table) ([]map[string]any, error) {
-	rows, err := c.db.QueryxContext(ctx, fmt.Sprintf("SELECT * FROM %s LIMIT 5", table.Name))
+	tx, err := c.db.BeginTxx(ctx, &sql.TxOptions{
+		ReadOnly: true,
+	})
+	if err != nil {
+		return nil, xerrors.Errorf("BeginTx failed with error: %w", err)
+	}
+	defer tx.Commit()
+
+	rows, err := tx.NamedQuery(fmt.Sprintf("SELECT * FROM %s LIMIT 5", table.Name), map[string]any{})
 	if err != nil {
 		return nil, xerrors.Errorf("unable to query db: %w", err)
 	}
@@ -112,7 +126,7 @@ func (c Connector) Sample(ctx context.Context, table model.Table) ([]map[string]
 
 	res := make([]map[string]any, 0, 5)
 	for rows.Next() {
-		row := make(map[string]any)
+		row := map[string]any{}
 		if err := rows.MapScan(row); err != nil {
 			return nil, xerrors.Errorf("unable to scan row: %w", err)
 		}
@@ -169,7 +183,15 @@ func (c Connector) Query(ctx context.Context, endpoint model.Endpoint, params ma
 		return nil, xerrors.Errorf("unable to process params: %w", err)
 	}
 
-	rows, err := c.db.NamedQueryContext(ctx, endpoint.Query, processed)
+	tx, err := c.db.BeginTxx(ctx, &sql.TxOptions{
+		ReadOnly: c.Config().Readonly(),
+	})
+	if err != nil {
+		return nil, xerrors.Errorf("BeginTx failed with error: %w", err)
+	}
+	defer tx.Commit()
+
+	rows, err := tx.NamedQuery(endpoint.Query, processed)
 	if err != nil {
 		return nil, xerrors.Errorf("unable to query db: %w", err)
 	}
@@ -187,7 +209,15 @@ func (c Connector) Query(ctx context.Context, endpoint model.Endpoint, params ma
 }
 
 func (c Connector) LoadsColumns(ctx context.Context, tableName string) ([]model.ColumnSchema, error) {
-	rows, err := c.db.QueryContext(
+	tx, err := c.db.BeginTxx(ctx, &sql.TxOptions{
+		ReadOnly: true,
+	})
+	if err != nil {
+		return nil, xerrors.Errorf("BeginTx failed with error: %w", err)
+	}
+	defer tx.Commit()
+
+	rows, err := tx.QueryContext(
 		ctx,
 		`SELECT 
 			c.COLUMN_NAME,
@@ -206,7 +236,7 @@ func (c Connector) LoadsColumns(ctx context.Context, tableName string) ([]model.
 		tableName, c.config.Schema, c.config.Database,
 	)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("unable to query columns: %w", err)
 	}
 	defer rows.Close()
 

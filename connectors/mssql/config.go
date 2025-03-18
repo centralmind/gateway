@@ -19,6 +19,11 @@ type Config struct {
 	Port       int      `json:"port" yaml:"port"`               // Port number (default 1433)
 	Schema     string   `json:"schema" yaml:"schema"`           // Schema name (default "dbo")
 	ConnString string   `json:"conn_string" yaml:"conn_string"` // Direct connection string
+	IsReadonly bool     `json:"is_readonly" yaml:"is_readonly"`
+}
+
+func (c Config) Readonly() bool {
+	return c.IsReadonly
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface to allow for both

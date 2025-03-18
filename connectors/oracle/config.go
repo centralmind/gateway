@@ -17,6 +17,11 @@ type Config struct {
 	Schema     string   `yaml:"schema"`
 	Port       int      `yaml:"port"`
 	ConnString string   `yaml:"conn_string"`
+	IsReadonly bool     `yaml:"is_readonly"`
+}
+
+func (c Config) Readonly() bool {
+	return c.IsReadonly
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface to allow for both

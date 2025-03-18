@@ -22,6 +22,7 @@ func StartCommand() *cobra.Command {
 	var addr string
 	var servers string
 	var rawMode bool
+	var roMode bool
 	var disableSwagger bool
 	var prefix string
 	var dbDSN string
@@ -52,6 +53,7 @@ Upon successful startup, the terminal will display URLs for both services.`,
 	cmd.Flags().BoolVar(&enableMCP, "mcp", true, "Start MCP SSE server")
 	cmd.Flags().BoolVar(&enableRestAPI, "rest-api", true, "Start Rest API server")
 	cmd.Flags().BoolVar(&rawMode, "raw", true, "Enable raw protocol mode optimized for AI agents")
+	cmd.Flags().BoolVar(&roMode, "read-only", true, "Run queries on read-only mode")
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		var err error
 		var gw *gw_model.Config
@@ -67,9 +69,12 @@ Upon successful startup, the terminal will display URLs for both services.`,
 					Version:     "0.0.1",
 				},
 				Database: gw_model.Database{
-					Type:       typ,
-					Connection: dbDSN,
-					Endpoints:  nil,
+					Type: typ,
+					Connection: map[string]any{
+						"conn_string": dbDSN,
+						"is_readonly": roMode,
+					},
+					Endpoints: nil,
 				},
 			}
 		} else {

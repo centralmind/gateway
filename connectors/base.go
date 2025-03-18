@@ -2,6 +2,7 @@ package connectors
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/centralmind/gateway/model"
 	"github.com/jmoiron/sqlx"
@@ -27,7 +28,13 @@ func (b *BaseConnector) mapSQLTypeToColumnType(guesser TypeGuesser, sqlType stri
 // This implementation works with any SQL database that supports the database/sql interfaces
 func (b *BaseConnector) InferResultColumns(ctx context.Context, query string, guesser TypeGuesser) ([]model.ColumnSchema, error) {
 	// Prepare the statement to get column information
-	stmt, err := b.DB.PrepareNamedContext(ctx, query)
+	tx, err := b.DB.BeginTxx(ctx, &sql.TxOptions{
+		ReadOnly: true,
+	})
+	if err != nil {
+		return nil, xerrors.Errorf("BeginTx failed with error: %w", err)
+	}
+	stmt, err := tx.PrepareNamedContext(ctx, query)
 	if err != nil {
 		return nil, xerrors.Errorf("unable to prepare statement: %w", err)
 	}

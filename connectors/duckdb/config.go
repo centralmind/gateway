@@ -20,6 +20,10 @@ type Config struct {
 	ConnString string   `json:"conn_string" yaml:"conn_string"` // Direct connection string
 }
 
+func (c Config) Readonly() bool {
+	return false
+}
+
 // UnmarshalYAML implements the yaml.Unmarshaler interface
 func (c *Config) UnmarshalYAML(value *yaml.Node) error {
 	// Try to unmarshal as a string (connection string)

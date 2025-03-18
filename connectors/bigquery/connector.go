@@ -88,6 +88,11 @@ type Config struct {
 	Credentials string `json:"credentials" yaml:"credentials"`
 	Endpoint    string `yaml:"endpoint"`
 	ConnString  string `yaml:"conn_string"`
+	IsReadonly  bool   `yaml:"is_readonly"`
+}
+
+func (c Config) Readonly() bool {
+	return c.IsReadonly
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface to allow for both

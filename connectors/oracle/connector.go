@@ -2,6 +2,7 @@ package oracle
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strconv"
 	"strings"
@@ -83,7 +84,15 @@ func (c Connector) Sample(ctx context.Context, table model.Table) ([]map[string]
 	// Create schema-qualified table name
 	qualifiedTableName := fmt.Sprintf("%s.%s", c.config.Schema, table.Name)
 
-	rows, err := c.db.NamedQueryContext(ctx, fmt.Sprintf("SELECT * FROM %s WHERE ROWNUM <= 5", qualifiedTableName), map[string]any{})
+	tx, err := c.db.BeginTxx(ctx, &sql.TxOptions{
+		ReadOnly: true,
+	})
+	if err != nil {
+		return nil, xerrors.Errorf("BeginTx failed with error: %w", err)
+	}
+	defer tx.Commit()
+
+	rows, err := tx.NamedQuery(fmt.Sprintf("SELECT * FROM %s WHERE ROWNUM <= 5", qualifiedTableName), map[string]any{})
 	if err != nil {
 		return nil, xerrors.Errorf("unable to query db: %w", err)
 	}
@@ -214,8 +223,16 @@ func (c Connector) Query(ctx context.Context, endpoint model.Endpoint, params ma
 		query = strings.Replace(query, name, fmt.Sprintf(":%d", i+1), -1)
 	}
 
+	tx, err := c.db.BeginTxx(ctx, &sql.TxOptions{
+		ReadOnly: c.Config().Readonly(),
+	})
+	if err != nil {
+		return nil, xerrors.Errorf("BeginTx failed with error: %w", err)
+	}
+	defer tx.Commit()
+
 	// Execute query with numbered parameters
-	rows, err := c.db.Queryx(query, paramValues...)
+	rows, err := tx.Queryx(query, paramValues...)
 	if err != nil {
 		return nil, xerrors.Errorf("unable to execute query: %w", err)
 	}
@@ -233,7 +250,15 @@ func (c Connector) Query(ctx context.Context, endpoint model.Endpoint, params ma
 }
 
 func (c Connector) LoadsColumns(ctx context.Context, tableName string) ([]model.ColumnSchema, error) {
-	rows, err := c.db.QueryContext(
+	tx, err := c.db.BeginTxx(ctx, &sql.TxOptions{
+		ReadOnly: true,
+	})
+	if err != nil {
+		return nil, xerrors.Errorf("BeginTx failed with error: %w", err)
+	}
+	defer tx.Commit()
+
+	rows, err := tx.QueryContext(
 		ctx,
 		`SELECT 
 			c.COLUMN_NAME,

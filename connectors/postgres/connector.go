@@ -3,8 +3,11 @@ package postgres
 import (
 	"context"
 	"fmt"
-	"github.com/centralmind/gateway/connectors"
 	"strings"
+
+	"github.com/centralmind/gateway/connectors"
+
+	"database/sql"
 
 	"github.com/centralmind/gateway/castx"
 	"github.com/centralmind/gateway/model"
@@ -95,20 +98,20 @@ func (c *Connector) InferResultColumns(ctx context.Context, query string) ([]mod
 }
 
 func (c Connector) Sample(ctx context.Context, table model.Table) ([]map[string]any, error) {
-	// Use the schema from config, default to 'public' if not specified
-	schema := "public"
-	if c.config.Schema != "" {
-		schema = c.config.Schema
-	}
-
-	// Create schema-qualified table name
-	qualifiedTableName := fmt.Sprintf("\"%s\".\"%s\"", schema, table.Name)
-
-	rows, err := c.db.NamedQueryContext(ctx, fmt.Sprintf("select * from %s limit 5", qualifiedTableName), map[string]any{})
+	tx, err := c.db.BeginTxx(ctx, &sql.TxOptions{
+		ReadOnly: true,
+	})
 	if err != nil {
-		return nil, xerrors.Errorf("unable to ping db: %w", err)
+		return nil, xerrors.Errorf("BeginTx failed with error: %w", err)
+	}
+	defer tx.Commit()
+
+	rows, err := tx.NamedQuery(fmt.Sprintf("SELECT * FROM %s LIMIT 5", table.Name), map[string]any{})
+	if err != nil {
+		return nil, xerrors.Errorf("unable to query db: %w", err)
 	}
 	defer rows.Close()
+
 	res := make([]map[string]any, 0, 5)
 	for rows.Next() {
 		row := map[string]any{}
@@ -193,11 +196,20 @@ func (c Connector) Query(ctx context.Context, endpoint model.Endpoint, params ma
 		return nil, xerrors.Errorf("unable to process params: %w", err)
 	}
 
-	rows, err := c.db.NamedQueryContext(ctx, endpoint.Query, processed)
+	tx, err := c.db.BeginTxx(ctx, &sql.TxOptions{
+		ReadOnly: c.Config().Readonly(),
+	})
 	if err != nil {
-		return nil, xerrors.Errorf("unable to ping db: %w", err)
+		return nil, xerrors.Errorf("BeginTx failed with error: %w", err)
+	}
+	defer tx.Commit()
+
+	rows, err := tx.NamedQuery(endpoint.Query, processed)
+	if err != nil {
+		return nil, xerrors.Errorf("unable to query db: %w", err)
 	}
 	defer rows.Close()
+
 	res := make([]map[string]any, 0)
 	for rows.Next() {
 		row := map[string]any{}
@@ -210,13 +222,19 @@ func (c Connector) Query(ctx context.Context, endpoint model.Endpoint, params ma
 }
 
 func (c Connector) LoadsColumns(ctx context.Context, tableName string) ([]model.ColumnSchema, error) {
+	tx, err := c.db.BeginTxx(ctx, &sql.TxOptions{
+		ReadOnly: true,
+	})
+	if err != nil {
+		return nil, xerrors.Errorf("BeginTx failed with error: %w", err)
+	}
+	defer tx.Commit()
 	// Use the schema from config, default to 'public' if not specified
 	schema := "public"
 	if c.config.Schema != "" {
 		schema = c.config.Schema
 	}
-
-	rows, err := c.db.QueryContext(
+	rows, err := tx.QueryContext(
 		ctx,
 		`SELECT 
 			c.column_name, 
@@ -238,7 +256,7 @@ func (c Connector) LoadsColumns(ctx context.Context, tableName string) ([]model.
 		tableName, schema,
 	)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("unable to query columns: %w", err)
 	}
 	defer rows.Close()
 
@@ -247,7 +265,7 @@ func (c Connector) LoadsColumns(ctx context.Context, tableName string) ([]model.
 		var name, dataType, isNullable string
 		var isPrimaryKey bool
 		if err := rows.Scan(&name, &dataType, &isNullable, &isPrimaryKey); err != nil {
-			return nil, err
+			return nil, xerrors.Errorf("unable to scan column info: %w", err)
 		}
 		columns = append(columns, model.ColumnSchema{
 			Name:       name,

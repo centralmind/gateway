@@ -23,6 +23,11 @@ type Config struct {
 	EnableTLS  bool     `yaml:"enable_tls"`
 	ConnString string   `yaml:"conn_string"` // Connection string in format: postgresql://user:password@host:port/database
 	Schema     string   `yaml:"schema"`      // Database schema name for table access (format: schema.table_name)
+	IsReadonly bool     `yaml:"is_readonly"`
+}
+
+func (c Config) Readonly() bool {
+	return c.IsReadonly
 }
 
 func (c Config) ExtraPrompt() []string {

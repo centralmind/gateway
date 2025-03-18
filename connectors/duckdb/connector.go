@@ -2,6 +2,7 @@ package duckdb
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strconv"
 	"strings"
@@ -80,7 +81,15 @@ func (c *Connector) GuessColumnType(sqlType string) model.ColumnType {
 }
 
 func (c Connector) Sample(ctx context.Context, table model.Table) ([]map[string]any, error) {
-	rows, err := c.db.NamedQueryContext(ctx, fmt.Sprintf("SELECT * FROM %s LIMIT 5", table.Name), map[string]any{})
+	tx, err := c.db.BeginTxx(ctx, &sql.TxOptions{
+		ReadOnly: true,
+	})
+	if err != nil {
+		return nil, xerrors.Errorf("BeginTx failed with error: %w", err)
+	}
+	defer tx.Commit()
+
+	rows, err := tx.NamedQuery(fmt.Sprintf("SELECT * FROM %s LIMIT 5", table.Name), map[string]any{})
 	if err != nil {
 		return nil, xerrors.Errorf("unable to query db: %w", err)
 	}
@@ -196,7 +205,15 @@ func (c Connector) Query(ctx context.Context, endpoint model.Endpoint, params ma
 		}
 	}
 
-	rows, err := c.db.NamedQueryContext(ctx, endpoint.Query, processed)
+	tx, err := c.db.BeginTxx(ctx, &sql.TxOptions{
+		ReadOnly: c.Config().Readonly(),
+	})
+	if err != nil {
+		return nil, xerrors.Errorf("BeginTx failed with error: %w", err)
+	}
+	defer tx.Commit()
+
+	rows, err := tx.NamedQuery(endpoint.Query, processed)
 	if err != nil {
 		return nil, xerrors.Errorf("unable to execute query: %w", err)
 	}
@@ -214,7 +231,15 @@ func (c Connector) Query(ctx context.Context, endpoint model.Endpoint, params ma
 }
 
 func (c Connector) LoadsColumns(ctx context.Context, tableName string) ([]model.ColumnSchema, error) {
-	rows, err := c.db.QueryContext(
+	tx, err := c.db.BeginTxx(ctx, &sql.TxOptions{
+		ReadOnly: true,
+	})
+	if err != nil {
+		return nil, xerrors.Errorf("BeginTx failed with error: %w", err)
+	}
+	defer tx.Commit()
+
+	rows, err := tx.QueryContext(
 		ctx,
 		`SELECT 
 			column_name,
