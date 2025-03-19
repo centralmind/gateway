@@ -11,6 +11,7 @@ require (
 	github.com/charmbracelet/glamour v0.8.0
 	github.com/danielgtaylor/huma/v2 v2.30.0
 	github.com/docker/go-connections v0.5.0
+	github.com/elastic/go-elasticsearch/v8 v8.17.1
 	github.com/gin-gonic/gin v1.10.0
 	github.com/go-sql-driver/mysql v1.7.1
 	github.com/hashicorp/golang-lru/v2 v2.0.7
@@ -29,6 +30,7 @@ require (
 	github.com/stretchr/testify v1.10.0
 	github.com/testcontainers/testcontainers-go v0.35.0
 	github.com/testcontainers/testcontainers-go/modules/clickhouse v0.35.0
+	github.com/testcontainers/testcontainers-go/modules/elasticsearch v0.35.0
 	github.com/testcontainers/testcontainers-go/modules/gcloud v0.35.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.35.0
 	github.com/yuin/gopher-lua v1.1.1
@@ -66,6 +68,7 @@ require (
 	github.com/charmbracelet/lipgloss v0.12.1 // indirect
 	github.com/charmbracelet/x/ansi v0.1.4 // indirect
 	github.com/dlclark/regexp2 v1.11.0 // indirect
+	github.com/elastic/elastic-transport-go/v8 v8.6.1 // indirect
 	github.com/go-viper/mapstructure/v2 v2.2.1 // indirect
 	github.com/golang-sql/civil v0.0.0-20220223132316-b832511892a9 // indirect
 	github.com/golang-sql/sqlexp v0.1.0 // indirect
