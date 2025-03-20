@@ -8,6 +8,10 @@ import (
 	"github.com/centralmind/gateway/xcontext"
 )
 
+func (s *MCPServer) Tools() []model.Endpoint {
+	return s.tools
+}
+
 func (s *MCPServer) SetTools(tools []model.Endpoint) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

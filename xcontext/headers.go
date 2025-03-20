@@ -7,7 +7,25 @@ import (
 
 type contextKey string
 
-const headersKey contextKey = "headers"
+const (
+	headersKey contextKey = "headers"
+	sessionKey contextKey = "session"
+)
+
+func WithSession(ctx context.Context, sessionID string) context.Context {
+	if _, ok := ctx.Value(sessionKey).(bool); !ok {
+		return context.WithValue(ctx, sessionKey, sessionID)
+	}
+	return ctx
+}
+
+func Session(ctx context.Context) string {
+	session, ok := ctx.Value(sessionKey).(string)
+	if !ok {
+		return ""
+	}
+	return session
+}
 
 func WithHeader(ctx context.Context, headers map[string][]string) context.Context {
 	return context.WithValue(ctx, headersKey, headers)
