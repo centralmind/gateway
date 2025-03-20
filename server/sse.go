@@ -178,6 +178,8 @@ func (s *SSEServer) handleMessage(w http.ResponseWriter, r *http.Request) {
 		ClientID:  sessionID,
 		SessionID: sessionID,
 	})
+
+	ctx = xcontext.WithSession(ctx, sessionID)
 	ctx = xcontext.WithHeader(ctx, r.Header)
 
 	sessionI, ok := s.sessions.Load(sessionID)

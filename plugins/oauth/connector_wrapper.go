@@ -25,7 +25,10 @@ func (c *Connector) Query(ctx context.Context, endpoint model.Endpoint, params m
 	// Get token from header
 	authHeader := xcontext.Header(ctx, c.config.TokenHeader)
 	if authHeader == "" {
-		return nil, xerrors.Errorf("empty authorization header: %w", errors.ErrNotAuthorized)
+		authHeader = xcontext.Session(ctx)
+		if authHeader == "" {
+			return nil, xerrors.Errorf("empty authorization: %w", errors.ErrNotAuthorized)
+		}
 	}
 
 	// Extract token from "Bearer <token>" header

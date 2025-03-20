@@ -1,9 +1,15 @@
 package oauth
 
 import (
+	"context"
 	_ "embed"
+	"fmt"
+	"github.com/centralmind/gateway/mcp"
+	"github.com/centralmind/gateway/model"
+	"github.com/centralmind/gateway/xcontext"
 	"github.com/danielgtaylor/huma/v2"
 	"net/http"
+	"net/url"
 
 	"github.com/centralmind/gateway/connectors"
 	"github.com/centralmind/gateway/plugins"
@@ -22,6 +28,7 @@ type PluginBundle interface {
 	plugins.Wrapper
 	plugins.Swaggerer
 	plugins.HTTPServer
+	plugins.MCPToolEnricher
 }
 
 func New(cfg Config) (PluginBundle, error) {
@@ -42,6 +49,35 @@ func New(cfg Config) (PluginBundle, error) {
 type Plugin struct {
 	config      Config
 	oauthConfig *oauth2.Config
+	tools       []model.Endpoint
+	tooler      plugins.MCPTooler
+}
+
+func (p *Plugin) EnrichMCP(tooler plugins.MCPTooler) {
+	p.tools = tooler.Tools()
+	tooler.SetTools(nil)
+	tooler.Server().DeleteTools("list_tables", "discover_data", "prepare_query", "query")
+	u, _ := url.Parse(p.config.RedirectURL)
+	tooler.Server().AddTool(mcp.NewTool(
+		"authorize",
+		mcp.WithDescription(fmt.Sprintf(`
+This method will enable other tools and method inside MCP, should be called at very first tool ever called by a user.
+
+This tool require manual action from user, generate for user an ask to go via link to auth a tool.
+
+Link is generated via tool call
+`)),
+	), func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				mcp.TextContent{
+					Type: "text",
+					Text: fmt.Sprintf("Link is follows: %s://%s/%s?mcp_session=%s", u.Scheme, u.Host, p.config.AuthURL, xcontext.Session(ctx)),
+				},
+			},
+		}, nil
+	})
+	p.tooler = tooler
 }
 
 func (p *Plugin) RegisterRoutes(mux *http.ServeMux) {

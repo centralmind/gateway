@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/centralmind/gateway/xcontext"
 	"io"
 	"log"
 	"os"
@@ -55,6 +56,7 @@ func (s *StdioServer) Listen(
 		SessionID: "stdio",
 	})
 
+	ctx = xcontext.WithSession(ctx, "stdio")
 	reader := bufio.NewReader(stdin)
 
 	// Start notification handler

@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"github.com/centralmind/gateway/plugins"
 	"net/http"
 	"net/url"
 	"os"
@@ -136,6 +137,13 @@ Upon successful startup, the terminal will display URLs for both services.`,
 
 		logrus.Infof("Gateway server started successfully!")
 		if enableMCP {
+			plugs, err := plugins.Plugins[plugins.MCPToolEnricher](gw.Plugins)
+			if err != nil {
+				return xerrors.Errorf("unable to load plugins: %w", err)
+			}
+			for _, plug := range plugs {
+				plug.EnrichMCP(srv)
+			}
 			sse := srv.ServeSSE(serverAddresses[0], prefix)
 			mux.Handle(path.Join("/", prefix, "sse"), sse)
 			mux.Handle(path.Join("/", prefix, "message"), sse)

@@ -5,7 +5,12 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"net/http"
+	"sync"
 	"time"
+)
+
+var (
+	authorizedSessions = sync.Map{}
 )
 
 // generateState creates a random state parameter to prevent CSRF
@@ -35,6 +40,14 @@ func (p *Plugin) HandleAuthorize(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     "oauth_state",
 		Value:    state,
+		Path:     "/",
+		Expires:  time.Now().Add(15 * time.Minute),
+		HttpOnly: true,
+		Secure:   r.TLS != nil,
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:     "mcp_session",
+		Value:    r.URL.Query().Get("mcp_session"),
 		Path:     "/",
 		Expires:  time.Now().Add(15 * time.Minute),
 		HttpOnly: true,
@@ -89,6 +102,13 @@ func (p *Plugin) HandleCallback(w http.ResponseWriter, r *http.Request) {
 		AccessToken: token.AccessToken,
 		TokenType:   "Bearer",
 	}
+
+	if mcpSession, err := r.Cookie("mcp_session"); err == nil {
+		authorizedSessions.LoadOrStore(mcpSession.Value, response)
+		p.tooler.SetTools(p.tools)
+		p.tooler.EnableRawProtocol()
+	}
+
 	if !token.Expiry.IsZero() {
 		response.ExpiresIn = int(time.Until(token.Expiry).Seconds())
 	}
