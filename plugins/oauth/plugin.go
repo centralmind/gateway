@@ -20,6 +20,11 @@ import (
 //go:embed README.md
 var docString string
 
+var (
+	tools  []model.Endpoint
+	tooler plugins.MCPTooler
+)
+
 func init() {
 	plugins.Register(New)
 }
@@ -49,12 +54,11 @@ func New(cfg Config) (PluginBundle, error) {
 type Plugin struct {
 	config      Config
 	oauthConfig *oauth2.Config
-	tools       []model.Endpoint
-	tooler      plugins.MCPTooler
 }
 
-func (p *Plugin) EnrichMCP(tooler plugins.MCPTooler) {
-	p.tools = tooler.Tools()
+func (p *Plugin) EnrichMCP(t plugins.MCPTooler) {
+	tooler = t
+	tools = tooler.Tools()
 	tooler.SetTools(nil)
 	tooler.Server().DeleteTools("list_tables", "discover_data", "prepare_query", "query")
 	u, _ := url.Parse(p.config.RedirectURL)
@@ -72,12 +76,11 @@ Link is generated via tool call
 			Content: []mcp.Content{
 				mcp.TextContent{
 					Type: "text",
-					Text: fmt.Sprintf("Link is follows: %s://%s/%s?mcp_session=%s", u.Scheme, u.Host, p.config.AuthURL, xcontext.Session(ctx)),
+					Text: fmt.Sprintf("Link is follows: [auth](%s://%s%s?mcp_session=%s)", u.Scheme, u.Host, p.config.AuthURL, xcontext.Session(ctx)),
 				},
 			},
 		}, nil
 	})
-	p.tooler = tooler
 }
 
 func (p *Plugin) RegisterRoutes(mux *http.ServeMux) {

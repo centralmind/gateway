@@ -105,8 +105,8 @@ func (p *Plugin) HandleCallback(w http.ResponseWriter, r *http.Request) {
 
 	if mcpSession, err := r.Cookie("mcp_session"); err == nil {
 		authorizedSessions.LoadOrStore(mcpSession.Value, response)
-		p.tooler.SetTools(p.tools)
-		p.tooler.EnableRawProtocol()
+		tooler.SetTools(tools)
+		tooler.EnableRawProtocol()
 	}
 
 	if !token.Expiry.IsZero() {
