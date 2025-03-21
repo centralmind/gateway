@@ -121,7 +121,7 @@ func TestElasticsearchConnectorWithAuth(t *testing.T) {
 			Query: `{
 					"query": {
 						"match": {
-							"job": ":job"
+							"job": "{{job}}"
 						}
 					}
 				}`,

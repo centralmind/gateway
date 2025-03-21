@@ -33,13 +33,13 @@ func (c Config) ExtraPrompt() []string {
 	return []string{
 		"Database: Elasticsearch (NoSQL search engine).",
 		"Queries must use Elasticsearch Query DSL in JSON format.",
-		"Use RESTful API methods: GET (search), POST (insert), PUT (update), DELETE (remove).",
-		"Use index names as collections, and '_id' for document IDs.",
 		"Paginate with 'from' and 'size' instead of 'offset' and 'limit'.",
-		"Filtering must use 'bool' queries with 'must', 'should', 'filter', 'must_not'.",
-		"Sorting via the 'sort' field, and aggregations for counts, averages, and grouping.",
+		"Elasticsearch Query DSL with Mustache templating syntax.",
+		"Elasticsearch queries are written as JSON objects and sent to the _search/template endpoint.",
+		"For Elasticsearch, queries must be written using Mustache syntax.",
+		"Use double curly braces {{param}} for dynamic variables.",
 		"Hierarchical data should use 'nested' fields or parent-child relationships.",
-		"Ensure queries are properly escaped and optimized for performance.",
+		"The final output must contain *only valid single JSON* with no additional commentary, explanations, or markdown formatting!",
 	}
 }
 

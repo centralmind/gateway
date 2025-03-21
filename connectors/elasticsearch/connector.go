@@ -11,7 +11,6 @@ import (
 	"github.com/elastic/go-elasticsearch/v8"
 	"golang.org/x/xerrors"
 	"io"
-	"log"
 	"strings"
 )
 
@@ -63,24 +62,20 @@ func (c *Connector) Query(ctx context.Context, endpoint model.Endpoint, params m
 		return nil, xerrors.Errorf("unable to process params: %w", err)
 	}
 
-	var queryMap map[string]any
-	err = json.Unmarshal([]byte(endpoint.Query), &queryMap)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse query JSON: %w", err)
+	finalQuery := map[string]interface{}{
+		"source": endpoint.Query,
+		"params": processed,
 	}
 
-	// Replace placeholders inside query efficiently
-	replacePlaceholders(queryMap, processed)
-
-	queryBytes, err := json.Marshal(queryMap)
+	var buf bytes.Buffer
+	err = json.NewEncoder(&buf).Encode(finalQuery)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal search query: %w", err)
+		return nil, xerrors.Errorf("unable to encode query: %w", err)
 	}
-	log.Println(queryMap)
-	// Execute the search request
-	res, err := c.client.Search(
-		c.client.Search.WithContext(ctx),
-		c.client.Search.WithBody(bytes.NewReader(queryBytes)),
+
+	res, err := c.client.API.SearchTemplate(
+		&buf,
+		c.client.SearchTemplate.WithContext(ctx),
 	)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to execute search query: %w", err)
@@ -133,23 +128,6 @@ func (c *Connector) Query(ctx context.Context, endpoint model.Endpoint, params m
 	}
 
 	return results, nil
-}
-
-// replacePlaceholders replaces parameters in the "match" clause and other necessary fields
-func replacePlaceholders(query map[string]any, params map[string]any) {
-	if queryClause, ok := query["query"].(map[string]any); ok {
-		if matchClause, ok := queryClause["match"].(map[string]any); ok {
-			// Replace only needed placeholders in the "match" clause
-			for field, value := range matchClause {
-				if strVal, isString := value.(string); isString && len(strVal) > 1 && strVal[0] == ':' {
-					paramName := strVal[1:] // Remove ":" prefix
-					if paramValue, exists := params[paramName]; exists {
-						matchClause[field] = paramValue // ✅ Replace only necessary values
-					}
-				}
-			}
-		}
-	}
 }
 
 // Discovery retrieves available indices in Elasticsearch
@@ -309,7 +287,7 @@ func (c *Connector) InferQuery(ctx context.Context, query string) ([]model.Colum
 	// Execute the query in Elasticsearch
 	res, err := c.client.Search(
 		c.client.Search.WithContext(ctx),
-		c.client.Search.WithBody(strings.NewReader(query)), // ✅ Correct: query as a JSON body
+		c.client.Search.WithBody(strings.NewReader(query)),
 	)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to execute query: %w", err)
@@ -330,11 +308,16 @@ func (c *Connector) InferQuery(ctx context.Context, query string) ([]model.Colum
 	}
 
 	// Extract "hits" (documents)
-	hits, ok := result["hits"].(map[string]interface{})["hits"].([]interface{})
-	if !ok || len(hits) == 0 {
-		return nil, xerrors.Errorf("no sample data found for index %s", query)
+	var hits []interface{}
+	if hitsMap, ok := result["hits"].(map[string]interface{}); ok {
+		if hitsList, ok := hitsMap["hits"].([]interface{}); ok {
+			hits = hitsList
+		} else {
+			return nil, xerrors.Errorf("'hits' key is missing or not a list")
+		}
+	} else {
+		return nil, xerrors.Errorf("'hits' key is missing or not a map")
 	}
-
 	// Use the helper function
 	return c.extractColumnsFromHits(hits)
 }
