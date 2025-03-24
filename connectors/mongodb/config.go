@@ -12,7 +12,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-//go:embed config.yaml
+//go:embed readme.md
 var docString string
 
 type Config struct {
@@ -40,21 +40,32 @@ func (c Config) Type() string {
 }
 
 func (c Config) Doc() string {
-	return "MongoDB is a NoSQL database that uses JSON-like documents with optional schemas."
+	return docString
 }
 
 func (c Config) ConnectionString() string {
-	// URL encode username and password
 	encodedUsername := url.QueryEscape(c.Username)
 	encodedPassword := url.QueryEscape(c.Password)
 	return fmt.Sprintf("mongodb://%s:%s@%s/%s", encodedUsername, encodedPassword, strings.Join(c.Hosts, ","), c.Database)
 }
 
 func (c Config) Validate() error {
+	if err := c.validateHosts(); err != nil {
+		return err
+	}
+	if err := c.validateDatabase(); err != nil {
+		return err
+	}
+	if err := c.validateCredentials(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c Config) validateHosts() error {
 	if len(c.Hosts) == 0 {
 		return fmt.Errorf("hosts are required")
 	}
-
 	for _, host := range c.Hosts {
 		if !strings.Contains(host, ":") {
 			return fmt.Errorf("invalid host format: %s, expected host:port", host)
@@ -63,25 +74,27 @@ func (c Config) Validate() error {
 		if len(parts) != 2 {
 			return fmt.Errorf("invalid host format: %s", host)
 		}
-		port := parts[1]
-		if _, err := strconv.Atoi(port); err != nil {
-			return fmt.Errorf("invalid port number: %s", port)
+		if _, err := strconv.Atoi(parts[1]); err != nil {
+			return fmt.Errorf("invalid port number: %s", parts[1])
 		}
 	}
+	return nil
+}
 
+func (c Config) validateDatabase() error {
 	if c.Database == "" {
 		return fmt.Errorf("database is required")
 	}
-
-	// Validate database name format
 	if !regexp.MustCompile(`^[a-zA-Z0-9_-]+$`).MatchString(c.Database) {
 		return fmt.Errorf("invalid database name format")
 	}
+	return nil
+}
 
+func (c Config) validateCredentials() error {
 	if c.Username == "" {
 		return fmt.Errorf("username is required")
 	}
-
 	if c.Password == "" {
 		return fmt.Errorf("password is required")
 	}
