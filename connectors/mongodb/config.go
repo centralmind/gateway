@@ -1,6 +1,7 @@
 package mongodb
 
 import (
+	_ "embed"
 	"fmt"
 	"net/url"
 	"regexp"
