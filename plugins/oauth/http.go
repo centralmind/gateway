@@ -114,6 +114,17 @@ func (p *Plugin) HandleCallback(w http.ResponseWriter, r *http.Request) {
 				waiter.(*sync.WaitGroup).Done()
 			}
 		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+
+		// Read HTML template from embedded resources
+		htmlContent, err := resources.ReadFile("resources/auth_complete.html")
+		if err != nil {
+			http.Error(w, "Failed to load template", http.StatusInternalServerError)
+			return
+		}
+
+		_, _ = w.Write(htmlContent)
+		return
 	}
 
 	if !token.Expiry.IsZero() {
