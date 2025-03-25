@@ -22,6 +22,7 @@ type Config struct {
 	Username   string   `yaml:"username"`
 	Password   string   `yaml:"password"`
 	IsReadonly bool     `yaml:"is_readonly"`
+	ConnString string   `yaml:"conn_string"`
 }
 
 func (c Config) Readonly() bool {
@@ -45,9 +46,18 @@ func (c Config) Doc() string {
 }
 
 func (c Config) ConnectionString() string {
+	// If direct connection string is provided, use it
+	if c.ConnString != "" {
+		return c.ConnString
+	}
+
 	encodedUsername := url.QueryEscape(c.Username)
 	encodedPassword := url.QueryEscape(c.Password)
-	return fmt.Sprintf("mongodb://%s:%s@%s/%s", encodedUsername, encodedPassword, strings.Join(c.Hosts, ","), c.Database)
+	return fmt.Sprintf("mongodb://%s:%s@%s/%s?authSource=admin",
+		encodedUsername,
+		encodedPassword,
+		strings.Join(c.Hosts, ","),
+		c.Database)
 }
 
 func (c Config) Validate() error {
