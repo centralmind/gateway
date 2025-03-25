@@ -3,13 +3,16 @@ package oauth
 import (
 	"context"
 	_ "embed"
-	"fmt"
+	"errors"
+	gerrors "github.com/centralmind/gateway/errors"
 	"github.com/centralmind/gateway/mcp"
 	"github.com/centralmind/gateway/model"
+	"github.com/centralmind/gateway/server"
 	"github.com/centralmind/gateway/xcontext"
 	"github.com/danielgtaylor/huma/v2"
 	"net/http"
 	"net/url"
+	"sync"
 
 	"github.com/centralmind/gateway/connectors"
 	"github.com/centralmind/gateway/plugins"
@@ -57,29 +60,31 @@ type Plugin struct {
 }
 
 func (p *Plugin) EnrichMCP(t plugins.MCPTooler) {
-	tooler = t
-	tools = tooler.Tools()
-	tooler.SetTools(nil)
-	tooler.Server().DeleteTools("list_tables", "discover_data", "prepare_query", "query")
 	u, _ := url.Parse(p.config.RedirectURL)
-	tooler.Server().AddTool(mcp.NewTool(
-		"authorize",
-		mcp.WithDescription(fmt.Sprintf(`
-This method will enable other tools and method inside MCP, should be called at very first tool ever called by a user.
-
+	tooler.Server().AddToolMiddleware(func(ctx context.Context, tool server.ServerTool, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		waiter, ok := authorizedSessionsWG.Load(xcontext.Session(ctx))
+		if ok {
+			waiter.(*sync.WaitGroup).Wait()
+		}
+		r, err := tool.Handler(ctx, request)
+		if err != nil {
+			if errors.Is(err, gerrors.ErrNotAuthorized) {
+				authorizedSessionsWG.Store(xcontext.Session(ctx), &sync.WaitGroup{})
+				return nil, xerrors.Errorf(
+					`
 This tool require manual action from user, generate for user an ask to go via link to auth a tool.
-
-Link is generated via tool call
-`)),
-	), func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		return &mcp.CallToolResult{
-			Content: []mcp.Content{
-				mcp.TextContent{
-					Type: "text",
-					Text: fmt.Sprintf("Link is follows: [auth](%s://%s%s?mcp_session=%s)", u.Scheme, u.Host, p.config.AuthURL, xcontext.Session(ctx)),
-				},
-			},
-		}, nil
+Link is follows: [auth](%s://%s%s?mcp_session=%s)
+Agent must retry this call, server will wait till user action is completed.
+`,
+					u.Scheme,
+					u.Host,
+					p.config.AuthURL,
+					xcontext.Session(ctx),
+				)
+			}
+			return nil, err
+		}
+		return r, nil
 	})
 }
 

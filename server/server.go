@@ -40,6 +40,9 @@ type PromptHandlerFunc func(ctx context.Context, request mcp.GetPromptRequest) (
 // ToolHandlerFunc handles tool calls with given arguments.
 type ToolHandlerFunc func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error)
 
+// ToolMiddlewareFunc add a middleware interceptor for tool
+type ToolMiddlewareFunc func(ctx context.Context, tool ServerTool, request mcp.CallToolRequest) (*mcp.CallToolResult, error)
+
 // ServerTool combines a Tool with its ToolHandlerFunc.
 type ServerTool struct {
 	Tool    mcp.Tool
@@ -454,6 +457,20 @@ func (s *MCPServer) AddPrompt(prompt mcp.Prompt, handler PromptHandlerFunc) {
 // AddTool registers a new tool and its handler
 func (s *MCPServer) AddTool(tool mcp.Tool, handler ToolHandlerFunc) {
 	s.AddTools(ServerTool{Tool: tool, Handler: handler})
+}
+
+func (s *MCPServer) AddToolMiddleware(f ToolMiddlewareFunc) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, entry := range s.tools {
+		p := s.tools[entry.Tool.Name]
+		s.tools[entry.Tool.Name] = ServerTool{
+			Tool: entry.Tool,
+			Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+				return f(ctx, p, request)
+			},
+		}
+	}
 }
 
 // AddTools registers multiple tools at once

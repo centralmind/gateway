@@ -1,7 +1,6 @@
 package plugins
 
 import (
-	"github.com/centralmind/gateway/model"
 	"github.com/centralmind/gateway/server"
 	"github.com/danielgtaylor/huma/v2"
 	"net/http"
@@ -40,9 +39,6 @@ type HTTPServer interface {
 }
 
 type MCPTooler interface {
-	Tools() []model.Endpoint
-	SetTools([]model.Endpoint)
-	EnableRawProtocol()
 	Server() *server.MCPServer
 }
 

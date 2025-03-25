@@ -9,8 +9,10 @@ import (
 	"time"
 )
 
+// for now - global var, better to replace with shared DB
 var (
-	authorizedSessions = sync.Map{}
+	authorizedSessions   = sync.Map{}
+	authorizedSessionsWG = sync.Map{}
 )
 
 // generateState creates a random state parameter to prevent CSRF
@@ -104,9 +106,11 @@ func (p *Plugin) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if mcpSession, err := r.Cookie("mcp_session"); err == nil {
-		authorizedSessions.LoadOrStore(mcpSession.Value, response)
-		tooler.SetTools(tools)
-		tooler.EnableRawProtocol()
+		authorizedSessions.LoadOrStore(mcpSession.Value, "Bearer "+token.AccessToken)
+		waiter, ok := authorizedSessionsWG.Load(mcpSession.Value)
+		if ok {
+			waiter.(*sync.WaitGroup).Done()
+		}
 	}
 
 	if !token.Expiry.IsZero() {
