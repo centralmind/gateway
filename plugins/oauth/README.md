@@ -31,6 +31,68 @@ Implements OAuth 2.0 authentication with support for various providers (Google, 
    - If valid and has required scopes, request proceeds
    - If invalid or insufficient scopes, returns 401/403
 
+## MCP Tools Authorization Flow
+
+1. **Middleware Integration**
+   - MCP Tools automatically injects authorization middleware
+   - Middleware checks for valid session token in requests
+
+2. **Initial Access**
+   - When user accesses protected endpoint without token:
+     - System returns 401 with OAuth authorization URL
+     - User is prompted to follow the authorization link
+     - OAuth flow initiates through configured provider
+
+3. **Session Management**
+   - After successful OAuth authorization:
+     - System creates a session for the user
+     - OAuth token is securely stored and associated with session
+     - User receives session token for subsequent requests
+
+4. **Protected Operations**
+   - All subsequent requests include session token
+   - Middleware automatically validates session
+   - OAuth token is used internally for protected operations
+   - Session persists until explicitly terminated or timeout
+
+### Authorization Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant MCP_Tools as MCP Tools Middleware
+    participant Connector_DB as Connector DB
+    participant OAuth as OAuth Provider
+    
+    Note over User, OAuth: Initial access without authorization
+    
+    User->>MCP_Tools: Request to protected resource (no token)
+    MCP_Tools->>MCP_Tools: Check for session token
+    MCP_Tools-->>User: 401 Unauthorized + Authorization URL
+    
+    Note over User, OAuth: OAuth authorization process
+    
+    User->>OAuth: Follow authorization link
+    OAuth->>User: Authorization/consent page
+    User->>OAuth: Enter credentials and consent
+    OAuth->>MCP_Tools: Redirect with authorization code
+    MCP_Tools->>OAuth: Exchange code for access token
+    OAuth-->>MCP_Tools: Access token
+    
+    Note over User, OAuth: Session management
+    
+    MCP_Tools->>MCP_Tools: Create user session with unique ID
+    MCP_Tools->>MCP_Tools: Store OAuth token linked to session ID
+    
+    Note over User, OAuth: Subsequent requests
+    
+    User->>MCP_Tools: Request inside session ID
+    MCP_Tools->>MCP_Tools: Validate session ID and retrieve associated OAuth token
+    MCP_Tools->>Connector_DB: Request with OAuth token
+    Connector_DB-->>MCP_Tools: DB response
+    MCP_Tools-->>User: Response to client
+```
+
 ## Configuration
 
 ```yaml
