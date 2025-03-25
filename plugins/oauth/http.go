@@ -109,7 +109,10 @@ func (p *Plugin) HandleCallback(w http.ResponseWriter, r *http.Request) {
 		authorizedSessions.LoadOrStore(mcpSession.Value, "Bearer "+token.AccessToken)
 		waiter, ok := authorizedSessionsWG.Load(mcpSession.Value)
 		if ok {
-			waiter.(*sync.WaitGroup).Done()
+			_, okok := authorizedSessions.Load(mcpSession.Value)
+			if !okok {
+				waiter.(*sync.WaitGroup).Done()
+			}
 		}
 	}
 

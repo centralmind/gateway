@@ -165,6 +165,10 @@ func matchRegex(actual interface{}, pattern string) (bool, error) {
 
 // checkAuthorization verifies authorization for a method
 func (c *Connector) checkAuthorization(method string, claims map[string]interface{}, params map[string]interface{}) error {
+	// no rules == not authorization, only authentication
+	if len(c.config.AuthorizationRules) == 0 {
+		return nil
+	}
 	// Check rules for the method
 	var applicableRules []AuthorizationRule
 	for _, rule := range c.config.AuthorizationRules {

@@ -767,10 +767,11 @@ func (s *MCPServer) handleToolCall(
 	}
 
 	for _, m := range s.toolMiddlewares {
+		curH := tool.Handler
 		tt := ServerTool{
 			Tool: tool.Tool,
 			Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-				return m(ctx, tool, request)
+				return m(ctx, ServerTool{Tool: tool.Tool, Handler: curH}, request)
 			},
 		}
 		tool = tt

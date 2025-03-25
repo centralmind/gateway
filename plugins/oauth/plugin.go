@@ -68,6 +68,8 @@ func (p *Plugin) EnrichMCP(tooler plugins.MCPTooler) {
 					`
 This tool require manual action from user, generate for user an ask to go via link to auth a tool.
 Link is follows: [auth](%s://%s%s?mcp_session=%s)
+Prompt to user a link as markdown link above.
+
 Agent must retry this call, server will wait till user action is completed.
 `,
 					u.Scheme,
