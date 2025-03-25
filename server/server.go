@@ -75,6 +75,7 @@ type MCPServer struct {
 	prompts              map[string]mcp.Prompt
 	promptHandlers       map[string]PromptHandlerFunc
 	tools                map[string]ServerTool
+	toolMiddlewares      []ToolMiddlewareFunc
 	notificationHandlers map[string]NotificationHandlerFunc
 	instructions         string
 	capabilities         serverCapabilities
@@ -462,15 +463,7 @@ func (s *MCPServer) AddTool(tool mcp.Tool, handler ToolHandlerFunc) {
 func (s *MCPServer) AddToolMiddleware(f ToolMiddlewareFunc) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	for _, entry := range s.tools {
-		p := s.tools[entry.Tool.Name]
-		s.tools[entry.Tool.Name] = ServerTool{
-			Tool: entry.Tool,
-			Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-				return f(ctx, p, request)
-			},
-		}
-	}
+	s.toolMiddlewares = append(s.toolMiddlewares, f)
 }
 
 // AddTools registers multiple tools at once
@@ -773,6 +766,15 @@ func (s *MCPServer) handleToolCall(
 		)
 	}
 
+	for _, m := range s.toolMiddlewares {
+		tt := ServerTool{
+			Tool: tool.Tool,
+			Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+				return m(ctx, tool, request)
+			},
+		}
+		tool = tt
+	}
 	result, err := tool.Handler(ctx, request)
 	if err != nil {
 		return CreateErrorResponse(id, mcp.INTERNAL_ERROR, err.Error())
