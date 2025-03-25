@@ -6,7 +6,6 @@ import (
 	"errors"
 	gerrors "github.com/centralmind/gateway/errors"
 	"github.com/centralmind/gateway/mcp"
-	"github.com/centralmind/gateway/model"
 	"github.com/centralmind/gateway/server"
 	"github.com/centralmind/gateway/xcontext"
 	"github.com/danielgtaylor/huma/v2"
@@ -22,11 +21,6 @@ import (
 
 //go:embed README.md
 var docString string
-
-var (
-	tools  []model.Endpoint
-	tooler plugins.MCPTooler
-)
 
 func init() {
 	plugins.Register(New)
@@ -59,7 +53,7 @@ type Plugin struct {
 	oauthConfig *oauth2.Config
 }
 
-func (p *Plugin) EnrichMCP(t plugins.MCPTooler) {
+func (p *Plugin) EnrichMCP(tooler plugins.MCPTooler) {
 	u, _ := url.Parse(p.config.RedirectURL)
 	tooler.Server().AddToolMiddleware(func(ctx context.Context, tool server.ServerTool, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		waiter, ok := authorizedSessionsWG.Load(xcontext.Session(ctx))
