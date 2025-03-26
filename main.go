@@ -9,6 +9,7 @@ import (
 	_ "github.com/centralmind/gateway/connectors/bigquery"
 	_ "github.com/centralmind/gateway/connectors/clickhouse"
 	_ "github.com/centralmind/gateway/connectors/elasticsearch"
+	_ "github.com/centralmind/gateway/connectors/mongodb"
 	_ "github.com/centralmind/gateway/connectors/mssql"
 	_ "github.com/centralmind/gateway/connectors/mysql"
 	_ "github.com/centralmind/gateway/connectors/oracle"
