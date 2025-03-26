@@ -130,19 +130,8 @@ go build .
 
 Gateway uses LLM models to generate your API configuration. Follow these steps:
 
-1. Create a database connection configuration file (`connection.yaml`):
 
-```yaml
-type: postgres
-hosts:
-  - localhost
-user: 'your-database-user'
-password: 'your-database-password'
-database: 'your-database-name'
-port: 5432
-```
-
-2. Choose one of our supported AI providers:
+1. Choose one of our supported AI providers:
 
 - [OpenAI](https://docs.centralmind.ai/providers/openai) and all OpenAI-compatible providers
 - [Anthropic](https://docs.centralmind.ai/providers/anthropic)
@@ -162,16 +151,16 @@ Configure AI provider authorization. For Google Gemini, set an API key.
 export GEMINI_API_KEY='yourkey'
 ```
 
-3. Run the discovery command:
+2. Run the discovery command:
 
 ```shell
 ./gateway discover \
   --ai-provider gemini \
-  --connection-string connection.yaml \
+  --connection-string postgresql://neondb_owner:MY_PASSWORD@MY_HOST.neon.tech/neondb?sslmode=require \
   --prompt "Generate for me awesome readonly API"
 ```
 
-4. Monitor the generation process:
+3. Monitor the generation process:
 
 ```shell
 INFO 🚀 API Discovery Process
@@ -196,7 +185,7 @@ INFO API methods created: 18
 INFO Total number of columns with PII data: 2
 ```
 
-5. Review the generated configuration in `gateway.yaml`:
+4. Review the generated configuration in `gateway.yaml`:
 
 ```yaml
 api:
