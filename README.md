@@ -156,7 +156,7 @@ export GEMINI_API_KEY='yourkey'
 ```shell
 ./gateway discover \
   --ai-provider gemini \
-  --connection-string postgresql://neondb_owner:MY_PASSWORD@MY_HOST.neon.tech/neondb?sslmode=require \
+  --connection-string "postgresql://neondb_owner:MY_PASSWORD@MY_HOST.neon.tech/neondb?sslmode=require" \
   --prompt "Generate for me awesome readonly API"
 ```
 
