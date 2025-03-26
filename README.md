@@ -167,7 +167,7 @@ export GEMINI_API_KEY='yourkey'
 ```shell
 ./gateway discover \
   --ai-provider gemini \
-  --config connection.yaml \
+  --connection-string connection.yaml \
   --prompt "Generate for me awesome readonly API"
 ```
 
