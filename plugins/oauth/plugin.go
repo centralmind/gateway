@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"errors"
+	"github.com/centralmind/gateway/prompter"
 	"net/http"
 	"net/url"
 	"strings"
@@ -92,7 +93,36 @@ func (p *Plugin) EnrichMCP(tooler plugins.MCPTooler) {
 		}
 		return true
 	})
+	tooler.Server().AddTool(mcp.NewTool(
+		"whoami",
+		mcp.WithDescription(`
+Print information about who sits behind the keyboard, authorization info about user
+`)), func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				mcp.TextContent{
+					Annotated: mcp.Annotated{},
+					Type:      "text",
+					Text:      prompter.Yamlify(xcontext.Claims(ctx)),
+				},
+			},
+		}, nil
+	})
 	tooler.Server().AddToolMiddleware(func(ctx context.Context, tool server.ServerTool, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		authHeader := xcontext.Header(ctx, p.config.TokenHeader)
+		if authHeader == "" {
+			ss, ok := authorizedSessions.Load(xcontext.Session(ctx))
+			if !ok {
+				return nil, xerrors.New("empty authorization")
+			}
+			authHeader = ss.(string)
+		}
+		userInfo, err := validateToken(ctx, p.config, strings.Replace(authHeader, "Bearer ", "", 1))
+		if err == nil {
+			ctx = xcontext.WithClaims(ctx, userInfo)
+			return tool.Handler(ctx, request)
+		}
+
 		waiter, ok := authorizedSessionsWG.Load(xcontext.Session(ctx))
 		if ok {
 			waiter.(*sync.WaitGroup).Wait()
