@@ -115,7 +115,7 @@ func (c Config) MakeConfig() (*pgx.ConnConfig, error) {
 }
 
 func (c Config) Type() string {
-	return "postgres"
+	return "postgres|postgresql"
 }
 
 func (c Config) Doc() string {

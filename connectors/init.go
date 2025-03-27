@@ -32,14 +32,17 @@ var configs = map[string]Config{}
 
 func Register[TConfig Config](f func(cfg TConfig) (Connector, error)) {
 	var t TConfig
-	interceptors[t.Type()] = func(a any) (Connector, error) {
-		cfg, err := remapper.Remap[TConfig](a)
-		if err != nil {
-			return nil, xerrors.Errorf("unable to remap: %w", err)
+	types := strings.Split(t.Type(), "|")
+	for _, typ := range types {
+		interceptors[typ] = func(a any) (Connector, error) {
+			cfg, err := remapper.Remap[TConfig](a)
+			if err != nil {
+				return nil, xerrors.Errorf("unable to remap: %w", err)
+			}
+			return f(cfg)
 		}
-		return f(cfg)
+		configs[typ] = t
 	}
-	configs[t.Type()] = t
 }
 
 // KnownConnectors returns a list of all registered connector configurations
