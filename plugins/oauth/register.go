@@ -80,15 +80,6 @@ func (p *Plugin) HandleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Apply rate limiting if enabled
-	if p.registrationRateLimiter != nil {
-		clientIP := r.RemoteAddr
-		if !p.registrationRateLimiter.Allow(clientIP) {
-			respondWithError(w, ErrRateLimitExceeded, http.StatusTooManyRequests)
-			return
-		}
-	}
-
 	// Parse client metadata from request body
 	var clientMetadata OAuthClientMetadata
 	err := json.NewDecoder(r.Body).Decode(&clientMetadata)
@@ -120,25 +111,6 @@ func (p *Plugin) HandleRegister(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	_ = json.NewEncoder(w).Encode(gin.H{})
-}
-
-// SetupRegistrationHandler configures the client registration endpoint
-func (p *Plugin) SetupRegistrationHandler(options RegistrationHandlerOptions) http.Handler {
-	// Store options in plugin
-	p.registrationOptions = options
-
-	// Set default values
-	if p.registrationOptions.ClientSecretExpirySeconds == 0 {
-		p.registrationOptions.ClientSecretExpirySeconds = DefaultClientSecretExpirySeconds
-	}
-
-	// Create rate limiter if enabled
-	if options.RateLimitRequests > 0 {
-		p.registrationRateLimiter = NewSimpleRateLimiter(time.Hour, options.RateLimitRequests)
-	}
-
-	// Create handler
-	return http.HandlerFunc(p.HandleRegister)
 }
 
 // respondWithError sends an OAuth error response to the client

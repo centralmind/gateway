@@ -19,32 +19,11 @@ var (
 	// ErrRateLimitExceeded is returned when rate limit is exceeded
 	ErrRateLimitExceeded = errors.New("rate limit exceeded")
 
-	// ErrServerError is returned for internal server errors
-	ErrServerError = errors.New("server error")
-
-	// ErrInvalidToken is returned when a token is invalid or not found
-	ErrInvalidToken = errors.New("invalid token")
-
-	// ErrTokenExpired is returned when a token has expired
-	ErrTokenExpired = errors.New("token expired")
-
 	// ErrInvalidRequest is returned when the request is malformed
 	ErrInvalidRequest = &OAuthError{ErrorType: "invalid_request", Description: "Invalid request"}
 
-	// ErrInvalidClient is returned when client authentication fails
-	ErrInvalidClient = &OAuthError{ErrorType: "invalid_client", Description: "Invalid client"}
-
-	// ErrInvalidGrant is returned when the provided authorization grant is invalid
-	ErrInvalidGrant = &OAuthError{ErrorType: "invalid_grant", Description: "Invalid grant"}
-
-	// ErrUnauthorizedClient is returned when the client is not authorized to use the grant type
-	ErrUnauthorizedClient = &OAuthError{ErrorType: "unauthorized_client", Description: "Unauthorized client"}
-
 	// ErrUnsupportedGrantType is returned when the grant type is not supported
 	ErrUnsupportedGrantType = &OAuthError{ErrorType: "unsupported_grant_type", Description: "Unsupported grant type"}
-
-	// ErrInvalidScope is returned when the requested scope is invalid or unknown
-	ErrInvalidScope = &OAuthError{ErrorType: "invalid_scope", Description: "Invalid scope"}
 )
 
 // OAuthErrorResponse represents an OAuth 2.0 error response

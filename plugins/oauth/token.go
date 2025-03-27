@@ -7,15 +7,6 @@ import (
 	"net/http"
 )
 
-// TokenResponse represents the response from the token endpoint
-type TokenResponse struct {
-	AccessToken  string `json:"access_token"`
-	TokenType    string `json:"token_type"`
-	ExpiresIn    int    `json:"expires_in,omitempty"`
-	RefreshToken string `json:"refresh_token,omitempty"`
-	Scope        string `json:"scope,omitempty"`
-}
-
 // TokenRequest represents a request to the token endpoint
 type TokenRequest struct {
 	GrantType    string `json:"grant_type"`

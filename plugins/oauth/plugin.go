@@ -51,36 +51,20 @@ func New(cfg Config) (PluginBundle, error) {
 		oauthConfig: oauthConfig,
 	}
 
-	// Initialize client store if client registration is enabled
-	if cfg.ClientRegistration.Enabled {
-		// Set registration options
-		plugin.registrationOptions = RegistrationHandlerOptions{
-			ClientSecretExpirySeconds: cfg.ClientRegistration.ClientSecretExpirySeconds,
-			RateLimitRequests:         cfg.ClientRegistration.RateLimitRequestsPerHour,
-		}
-
-		// Initialize rate limiter if configured
-		if cfg.ClientRegistration.RateLimitRequestsPerHour > 0 {
-			plugin.registrationRateLimiter = NewSimpleRateLimiter(time.Hour, cfg.ClientRegistration.RateLimitRequestsPerHour)
-		}
-	}
-
 	return plugin, nil
 }
 
 type Plugin struct {
-	config                  Config
-	oauthConfig             *oauth2.Config
-	registrationOptions     RegistrationHandlerOptions
-	registrationRateLimiter *SimpleRateLimiter
-	tokenRateLimiter        *SimpleRateLimiter
+	config           Config
+	oauthConfig      *oauth2.Config
+	tokenRateLimiter *SimpleRateLimiter
 }
 
 func (p *Plugin) EnrichMCP(tooler plugins.MCPTooler) {
 	u, _ := url.Parse(p.config.RedirectURL)
 	tooler.Server().AddAuthorizer(func(r *http.Request) bool {
-		if r.Header.Get("MCP-Protocol-Version") <= "2024" {
-			return true
+		if p.config.MCPProtocolVersion < "2025-03-26" {
+			return false
 		}
 		if r.Header.Get("Authorization") == "" {
 			return false
@@ -178,17 +162,6 @@ func (p *Plugin) RegisterRoutes(mux *http.ServeMux) {
 
 	// Register dynamic client registration endpoint if enabled
 	if p.config.ClientRegistration.Enabled {
-		// Configure registration handler options
-		p.registrationOptions = RegistrationHandlerOptions{
-			ClientSecretExpirySeconds: p.config.ClientRegistration.ClientSecretExpirySeconds,
-			RateLimitRequests:         p.config.ClientRegistration.RateLimitRequestsPerHour,
-		}
-
-		// Initialize rate limiter if configured
-		if p.config.ClientRegistration.RateLimitRequestsPerHour > 0 {
-			p.registrationRateLimiter = NewSimpleRateLimiter(time.Hour, p.config.ClientRegistration.RateLimitRequestsPerHour)
-		}
-
 		// Register the handler with CORS middleware
 		registrationHandler := http.HandlerFunc(p.HandleRegister)
 		mux.Handle(p.config.RegisterURL, CORSMiddleware(registrationHandler))

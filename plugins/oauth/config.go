@@ -82,6 +82,9 @@ type Config struct {
 
 	// ClientRegistration contains configuration for dynamic client registration
 	ClientRegistration ClientRegistrationConfig `yaml:"client_registration"`
+
+	// Version of MCP protocol auth
+	MCPProtocolVersion string `yaml:"mcp_protocol_version"`
 }
 
 // ClientRegistrationConfig represents configuration for dynamic client registration
