@@ -1,13 +1,10 @@
 package oauth
 
 import (
-	"crypto/rand"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"golang.org/x/oauth2"
 	"net/http"
-	"time"
 )
 
 // TokenResponse represents the response from the token endpoint
@@ -31,9 +28,6 @@ type TokenRequest struct {
 
 // TokenHandlerOptions contains options for the token endpoint handler
 type TokenHandlerOptions struct {
-	// TokenStore for managing tokens (this would be expanded in a real implementation)
-	TokenStore TokenStore
-
 	// RateLimitRequests is the maximum number of requests per window
 	// If 0, rate limiting is disabled
 	RateLimitRequests float64
@@ -142,30 +136,4 @@ func (p *Plugin) handleRefreshTokenGrant(w http.ResponseWriter, r *http.Request,
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(token)
-}
-
-// SetupTokenHandler configures the token endpoint handler
-func (p *Plugin) SetupTokenHandler(options TokenHandlerOptions) http.Handler {
-	// Store options in plugin
-	p.tokenOptions = options
-
-	// Create rate limiter if enabled
-	if options.RateLimitRequests > 0 {
-		p.tokenRateLimiter = NewSimpleRateLimiter(time.Minute*15, options.RateLimitRequests)
-	}
-
-	// Create handler
-	return http.HandlerFunc(p.HandleToken)
-}
-
-// generateRandomToken creates a random token
-func generateRandomToken() string {
-	token, err := GenerateAccessToken()
-	if err != nil {
-		// Fallback to a simple method in case of error
-		b := make([]byte, 32)
-		_, _ = rand.Read(b)
-		return base64.URLEncoding.EncodeToString(b)
-	}
-	return token
 }

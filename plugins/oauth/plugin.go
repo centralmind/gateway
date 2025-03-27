@@ -71,10 +71,8 @@ func New(cfg Config) (PluginBundle, error) {
 type Plugin struct {
 	config                  Config
 	oauthConfig             *oauth2.Config
-	tokenStore              TokenStore
 	registrationOptions     RegistrationHandlerOptions
 	registrationRateLimiter *SimpleRateLimiter
-	tokenOptions            TokenHandlerOptions
 	tokenRateLimiter        *SimpleRateLimiter
 }
 
@@ -168,22 +166,11 @@ func (p *Plugin) RegisterRoutes(mux *http.ServeMux) {
 	mux.Handle(p.config.AuthURL, CORSMiddleware(http.HandlerFunc(p.HandleAuthorize)))
 	mux.Handle(p.config.CallbackURL, CORSMiddleware(http.HandlerFunc(p.HandleCallback)))
 
-	// Initialize token store if not already set
-	if p.tokenStore == nil {
-		p.tokenStore = NewInMemoryTokenStore()
-	}
-
 	// Set up and register the token endpoint
 	tokenPath := p.config.TokenURL // Use the configured token URL
 
-	// Configure token handler options
-	p.tokenOptions = TokenHandlerOptions{
-		TokenStore:        p.tokenStore,
-		RateLimitRequests: 50, // 50 requests per 15 minute window
-	}
-
 	// Initialize token rate limiter
-	p.tokenRateLimiter = NewSimpleRateLimiter(time.Minute*15, p.tokenOptions.RateLimitRequests)
+	p.tokenRateLimiter = NewSimpleRateLimiter(time.Minute*15, p.config.ClientRegistration.RateLimitRequestsPerHour)
 
 	// Register the token handler with CORS middleware
 	tokenHandler := http.HandlerFunc(p.HandleToken)
