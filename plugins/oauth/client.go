@@ -20,3 +20,15 @@ type OAuthClientMetadata struct {
 	SoftwareID              string   `json:"software_id,omitempty"`
 	SoftwareVersion         string   `json:"software_version,omitempty"`
 }
+
+// OAuthClientInformation represents the full client information including credentials
+type OAuthClientInformation struct {
+	// Fields from client metadata
+	OAuthClientMetadata
+
+	// Generated fields
+	ClientID              string `json:"client_id"`
+	ClientSecret          string `json:"client_secret,omitempty"`
+	ClientIDIssuedAt      int64  `json:"client_id_issued_at"`
+	ClientSecretExpiresAt int64  `json:"client_secret_expires_at,omitempty"`
+}

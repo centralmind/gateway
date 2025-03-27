@@ -5,13 +5,14 @@ import (
 	_ "embed"
 	"encoding/json"
 	"errors"
-	"github.com/centralmind/gateway/prompter"
-	"github.com/sirupsen/logrus"
 	"net/http"
 	"net/url"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/centralmind/gateway/prompter"
+	"github.com/sirupsen/logrus"
 
 	gerrors "github.com/centralmind/gateway/errors"
 	"github.com/centralmind/gateway/mcp"
@@ -55,9 +56,10 @@ func New(cfg Config) (PluginBundle, error) {
 }
 
 type Plugin struct {
-	config           Config
-	oauthConfig      *oauth2.Config
-	tokenRateLimiter *SimpleRateLimiter
+	config                  Config
+	oauthConfig             *oauth2.Config
+	tokenRateLimiter        *SimpleRateLimiter
+	registrationRateLimiter *SimpleRateLimiter
 }
 
 func (p *Plugin) EnrichMCP(tooler plugins.MCPTooler) {
@@ -162,6 +164,9 @@ func (p *Plugin) RegisterRoutes(mux *http.ServeMux) {
 
 	// Register dynamic client registration endpoint if enabled
 	if p.config.ClientRegistration.Enabled {
+		// Initialize the registration rate limiter
+		p.registrationRateLimiter = NewSimpleRateLimiter(time.Hour, p.config.ClientRegistration.RateLimitRequestsPerHour)
+
 		// Register the handler with CORS middleware
 		registrationHandler := http.HandlerFunc(p.HandleRegister)
 		mux.Handle(p.config.RegisterURL, CORSMiddleware(registrationHandler))

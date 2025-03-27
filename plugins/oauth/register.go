@@ -1,8 +1,10 @@
 package oauth
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
-	"github.com/gin-gonic/gin"
+	"fmt"
 	"net/http"
 	"sync"
 	"time"
@@ -12,6 +14,9 @@ const (
 	// DefaultClientSecretExpirySeconds is the default expiry time for client secrets (30 days)
 	DefaultClientSecretExpirySeconds int64 = 30 * 24 * 60 * 60
 )
+
+// Define ErrServerError if not already defined
+var ErrServerError = &OAuthError{ErrorType: "server_error", Description: "Internal server error"}
 
 // SimpleRateLimiter implements a basic rate limiter
 type SimpleRateLimiter struct {
@@ -107,10 +112,63 @@ func (p *Plugin) HandleRegister(w http.ResponseWriter, r *http.Request) {
 		clientMetadata.TokenEndpointAuthMethod = "client_secret_basic"
 	}
 
+	// Generate client credentials
+	clientID := generateUUID()
+
+	// Determine if this is a public client
+	isPublicClient := clientMetadata.TokenEndpointAuthMethod == "none"
+
+	// Generate client secret for non-public clients
+	var clientSecret string
+	if !isPublicClient {
+		var err error
+		clientSecret, err = generateSecureToken(32)
+		if err != nil {
+			respondWithError(w, ErrServerError, http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// Set client ID issuance time
+	clientIDIssuedAt := time.Now().Unix()
+
+	// Calculate client secret expiry time
+	var clientSecretExpiresAt int64
+	if !isPublicClient && p.config.ClientRegistration.ClientSecretExpirySeconds > 0 {
+		clientSecretExpiresAt = clientIDIssuedAt + p.config.ClientRegistration.ClientSecretExpirySeconds
+	}
+
+	// Create client information
+	clientInfo := &OAuthClientInformation{
+		OAuthClientMetadata:   clientMetadata,
+		ClientID:              clientID,
+		ClientSecret:          clientSecret,
+		ClientIDIssuedAt:      clientIDIssuedAt,
+		ClientSecretExpiresAt: clientSecretExpiresAt,
+	}
+
 	// Return client information
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	_ = json.NewEncoder(w).Encode(gin.H{})
+	_ = json.NewEncoder(w).Encode(clientInfo)
+}
+
+// generateUUID generates a UUID for client IDs
+func generateUUID() string {
+	// Generate a random UUID for client ID
+	b := make([]byte, 16)
+	_, _ = rand.Read(b)
+	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:])
+}
+
+// generateSecureToken creates a cryptographically secure random token
+func generateSecureToken(length int) (string, error) {
+	b := make([]byte, length)
+	_, err := rand.Read(b)
+	if err != nil {
+		return "", err
+	}
+	return base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(b), nil
 }
 
 // respondWithError sends an OAuth error response to the client
