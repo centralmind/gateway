@@ -40,7 +40,7 @@ func (c *Connector) Query(ctx context.Context, endpoint model.Endpoint, params m
 	tokenString := parts[1]
 
 	// Validate token through provider
-	userInfo, err := c.validateToken(ctx, tokenString)
+	userInfo, err := validateToken(ctx, c.config, tokenString)
 	if err != nil {
 		return nil, xerrors.Errorf("token validation failed: %w", err)
 	}
@@ -53,8 +53,8 @@ func (c *Connector) Query(ctx context.Context, endpoint model.Endpoint, params m
 }
 
 // validateToken makes a request to IDP to validate the token
-func (c *Connector) validateToken(ctx context.Context, token string) (map[string]any, error) {
-	provider := strings.ToLower(c.config.Provider)
+func validateToken(ctx context.Context, config Config, token string) (map[string]any, error) {
+	provider := strings.ToLower(config.Provider)
 	endpoint := ""
 
 	tokenMethod := "POST"
@@ -65,9 +65,9 @@ func (c *Connector) validateToken(ctx context.Context, token string) (map[string
 	case "google":
 		endpoint = "https://www.googleapis.com/oauth2/v3/userinfo"
 	case "auth0":
-		endpoint = c.config.UserInfoURL
+		endpoint = config.UserInfoURL
 	case "keycloak", "okta":
-		endpoint = c.config.IntrospectionURL
+		endpoint = config.IntrospectionURL
 	default:
 		return nil, xerrors.Errorf("unsupported provider: %s", provider)
 	}
@@ -80,7 +80,7 @@ func (c *Connector) validateToken(ctx context.Context, token string) (map[string
 		if err != nil {
 			return nil, err
 		}
-		req.SetBasicAuth(c.config.ClientID, c.config.ClientSecret)
+		req.SetBasicAuth(config.ClientID, config.ClientSecret)
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 		resp, err := http.DefaultClient.Do(req)

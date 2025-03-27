@@ -50,6 +50,9 @@ type Config struct {
 	// RedirectURL for OAuth flow
 	RedirectURL string `yaml:"redirect_url"`
 
+	// IssuerURL for OAuth MCP flow
+	IssuerURL string `yaml:"issuer_url"`
+
 	// Scopes defines required access scopes
 	Scopes []string `yaml:"scopes"`
 
@@ -62,6 +65,12 @@ type Config struct {
 	// CallbackURL is the gateway's callback endpoint path (default: "/oauth/callback")
 	CallbackURL string `yaml:"callback_url"`
 
+	// TokenURL is the gateway's token endpoint path (default: "/oauth/token")
+	TokenURL string `yaml:"token_url"`
+
+	// RegisterURL is the gateway's client registration endpoint path (default: "/oauth/register")
+	RegisterURL string `yaml:"register_url"`
+
 	// UserInfoURL is the endpoint for retrieving user information (required for Auth0)
 	UserInfoURL string `yaml:"user_info_url"`
 
@@ -70,6 +79,23 @@ type Config struct {
 
 	// AuthorizationRules defines authorization rules for methods
 	AuthorizationRules []AuthorizationRule `yaml:"authorization_rules"`
+
+	// ClientRegistration contains configuration for dynamic client registration
+	ClientRegistration ClientRegistrationConfig `yaml:"client_registration"`
+}
+
+// ClientRegistrationConfig represents configuration for dynamic client registration
+type ClientRegistrationConfig struct {
+	// Enabled indicates whether dynamic client registration is enabled
+	Enabled bool `yaml:"enabled"`
+
+	// ClientSecretExpirySeconds is the number of seconds after which client secrets expire
+	// If 0, client secrets will not expire (not recommended)
+	ClientSecretExpirySeconds int64 `yaml:"client_secret_expiry_seconds"`
+
+	// RateLimitRequestsPerHour is the maximum number of registration requests per hour
+	// If 0, rate limiting is disabled
+	RateLimitRequestsPerHour float64 `yaml:"rate_limit_requests_per_hour"`
 }
 
 func (c Config) Tag() string {
@@ -122,5 +148,17 @@ func (c *Config) WithDefaults() {
 	}
 	if c.CallbackURL == "" {
 		c.CallbackURL = "/oauth/callback"
+	}
+	if c.TokenURL == "" {
+		c.TokenURL = "/oauth/token"
+	}
+	if c.RegisterURL == "" {
+		c.RegisterURL = "/oauth/register"
+	}
+	if c.ClientRegistration.ClientSecretExpirySeconds == 0 {
+		c.ClientRegistration.ClientSecretExpirySeconds = 30 * 24 * 60 * 60 // 30 days
+	}
+	if c.ClientRegistration.RateLimitRequestsPerHour == 0 {
+		c.ClientRegistration.RateLimitRequestsPerHour = 20 // 20 requests per hour
 	}
 }

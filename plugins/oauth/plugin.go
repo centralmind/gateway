@@ -3,15 +3,19 @@ package oauth
 import (
 	"context"
 	_ "embed"
+	"encoding/json"
 	"errors"
+	"net/http"
+	"net/url"
+	"strings"
+	"sync"
+	"time"
+
 	gerrors "github.com/centralmind/gateway/errors"
 	"github.com/centralmind/gateway/mcp"
 	"github.com/centralmind/gateway/server"
 	"github.com/centralmind/gateway/xcontext"
 	"github.com/danielgtaylor/huma/v2"
-	"net/http"
-	"net/url"
-	"sync"
 
 	"github.com/centralmind/gateway/connectors"
 	"github.com/centralmind/gateway/plugins"
@@ -45,16 +49,49 @@ func New(cfg Config) (PluginBundle, error) {
 		oauthConfig: oauthConfig,
 	}
 
+	// Initialize client store if client registration is enabled
+	if cfg.ClientRegistration.Enabled {
+		// Set registration options
+		plugin.registrationOptions = RegistrationHandlerOptions{
+			ClientSecretExpirySeconds: cfg.ClientRegistration.ClientSecretExpirySeconds,
+			RateLimitRequests:         cfg.ClientRegistration.RateLimitRequestsPerHour,
+		}
+
+		// Initialize rate limiter if configured
+		if cfg.ClientRegistration.RateLimitRequestsPerHour > 0 {
+			plugin.registrationRateLimiter = NewSimpleRateLimiter(time.Hour, cfg.ClientRegistration.RateLimitRequestsPerHour)
+		}
+	}
+
 	return plugin, nil
 }
 
 type Plugin struct {
-	config      Config
-	oauthConfig *oauth2.Config
+	config                  Config
+	oauthConfig             *oauth2.Config
+	tokenStore              TokenStore
+	registrationOptions     RegistrationHandlerOptions
+	registrationRateLimiter *SimpleRateLimiter
+	tokenOptions            TokenHandlerOptions
+	tokenRateLimiter        *SimpleRateLimiter
 }
 
 func (p *Plugin) EnrichMCP(tooler plugins.MCPTooler) {
 	u, _ := url.Parse(p.config.RedirectURL)
+	tooler.Server().AddAuthorizer(func(r *http.Request) bool {
+		if r.Header.Get("Authorization") == "" {
+			return false
+		}
+		_, err := validateToken(
+			r.Context(),
+			p.config,
+			strings.Replace(r.Header.Get("Authorization"), "Bearer ", "", 1),
+		)
+		if err != nil {
+			return false
+		}
+		return true
+	})
 	tooler.Server().AddToolMiddleware(func(ctx context.Context, tool server.ServerTool, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		waiter, ok := authorizedSessionsWG.Load(xcontext.Session(ctx))
 		if ok {
@@ -88,9 +125,76 @@ func (p *Plugin) RegisterRoutes(mux *http.ServeMux) {
 	if p.config.AuthURL == "" || p.config.CallbackURL == "" {
 		return
 	}
-	// Register HTTP handlers
-	mux.HandleFunc(p.config.AuthURL, p.HandleAuthorize)
-	mux.HandleFunc(p.config.CallbackURL, p.HandleCallback)
+	rUrl, err := url.Parse(p.config.IssuerURL)
+	if err != nil {
+		return
+	}
+	// Register HTTP handlers with CORS middleware
+	mux.Handle(p.config.AuthURL, CORSMiddleware(http.HandlerFunc(p.HandleAuthorize)))
+	mux.Handle(p.config.CallbackURL, CORSMiddleware(http.HandlerFunc(p.HandleCallback)))
+
+	// Initialize token store if not already set
+	if p.tokenStore == nil {
+		p.tokenStore = NewInMemoryTokenStore()
+	}
+
+	// Set up and register the token endpoint
+	tokenPath := p.config.TokenURL // Use the configured token URL
+
+	// Configure token handler options
+	p.tokenOptions = TokenHandlerOptions{
+		TokenStore:        p.tokenStore,
+		RateLimitRequests: 50, // 50 requests per 15 minute window
+	}
+
+	// Initialize token rate limiter
+	p.tokenRateLimiter = NewSimpleRateLimiter(time.Minute*15, p.tokenOptions.RateLimitRequests)
+
+	// Register the token handler with CORS middleware
+	tokenHandler := http.HandlerFunc(p.HandleToken)
+	mux.Handle(tokenPath, CORSMiddleware(tokenHandler))
+
+	// Register dynamic client registration endpoint if enabled
+	if p.config.ClientRegistration.Enabled {
+		// Configure registration handler options
+		p.registrationOptions = RegistrationHandlerOptions{
+			ClientSecretExpirySeconds: p.config.ClientRegistration.ClientSecretExpirySeconds,
+			RateLimitRequests:         p.config.ClientRegistration.RateLimitRequestsPerHour,
+		}
+
+		// Initialize rate limiter if configured
+		if p.config.ClientRegistration.RateLimitRequestsPerHour > 0 {
+			p.registrationRateLimiter = NewSimpleRateLimiter(time.Hour, p.config.ClientRegistration.RateLimitRequestsPerHour)
+		}
+
+		// Register the handler with CORS middleware
+		registrationHandler := http.HandlerFunc(p.HandleRegister)
+		mux.Handle(p.config.RegisterURL, CORSMiddleware(registrationHandler))
+	}
+
+	// Register the well-known endpoint with CORS middleware
+	mux.Handle("/.well-known/oauth-authorization-server", CORSMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Add registration endpoint to metadata
+		var registrationEndpoint string
+		if p.config.ClientRegistration.Enabled {
+			registrationEndpoint = p.config.RegisterURL
+		}
+
+		metadata := NewMetadata(
+			*rUrl,
+			p.config.AuthURL,
+			tokenPath,
+			registrationEndpoint,
+		)
+
+		w.Header().Set("Content-Type", "application/json")
+		enc := json.NewEncoder(w)
+		enc.SetIndent("", "    ")
+		if err := enc.Encode(metadata); err != nil {
+			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+			return
+		}
+	})))
 }
 
 func (p *Plugin) Doc() string {

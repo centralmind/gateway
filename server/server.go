@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"regexp"
 	"sort"
 	"sync"
@@ -43,6 +44,9 @@ type ToolHandlerFunc func(ctx context.Context, request mcp.CallToolRequest) (*mc
 // ToolMiddlewareFunc add a middleware interceptor for tool
 type ToolMiddlewareFunc func(ctx context.Context, tool ServerTool, request mcp.CallToolRequest) (*mcp.CallToolResult, error)
 
+// AuthChecker verify sse request
+type AuthChecker func(r *http.Request) bool
+
 // ServerTool combines a Tool with its ToolHandlerFunc.
 type ServerTool struct {
 	Tool    mcp.Tool
@@ -76,6 +80,7 @@ type MCPServer struct {
 	promptHandlers       map[string]PromptHandlerFunc
 	tools                map[string]ServerTool
 	toolMiddlewares      []ToolMiddlewareFunc
+	authCheckers         []AuthChecker
 	notificationHandlers map[string]NotificationHandlerFunc
 	instructions         string
 	capabilities         serverCapabilities
@@ -506,6 +511,26 @@ func (s *MCPServer) DeleteTools(names ...string) {
 			// We can't return the error, but in a future version we could log it
 		}
 	}
+}
+
+// AddAuthorizer include auth checker to server
+func (s *MCPServer) AddAuthorizer(f AuthChecker) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.authCheckers = append(s.authCheckers, f)
+}
+
+// NeedAuth check authorizer
+func (s *MCPServer) NeedAuth(r *http.Request) bool {
+	if len(s.authCheckers) == 0 {
+		return false
+	}
+	for _, checker := range s.authCheckers {
+		if !checker(r) {
+			return true
+		}
+	}
+	return false
 }
 
 // AddNotificationHandler registers a new handler for incoming notifications

@@ -47,17 +47,27 @@ func (p *Plugin) HandleAuthorize(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: true,
 		Secure:   r.TLS != nil,
 	})
-	http.SetCookie(w, &http.Cookie{
-		Name:     "mcp_session",
-		Value:    r.URL.Query().Get("mcp_session"),
-		Path:     "/",
-		Expires:  time.Now().Add(15 * time.Minute),
-		HttpOnly: true,
-		Secure:   r.TLS != nil,
-	})
+	if r.URL.Query().Get("mcp_session") != "" {
+		http.SetCookie(w, &http.Cookie{
+			Name:     "mcp_session",
+			Value:    r.URL.Query().Get("mcp_session"),
+			Path:     "/",
+			Expires:  time.Now().Add(15 * time.Minute),
+			HttpOnly: true,
+			Secure:   r.TLS != nil,
+		})
+	}
+
+	redirectURL := r.URL.Query().Get("redirect_uri")
+	p.oauthConfig.RedirectURL = redirectURL
+	authURL := p.oauthConfig.AuthCodeURL(state)
 
 	// Build authorization URL
-	authURL := p.oauthConfig.AuthCodeURL(state)
+	if redirectURL != "" {
+		cfg := p.oauthConfig
+		cfg.RedirectURL = redirectURL
+		authURL = cfg.AuthCodeURL(state)
+	}
 
 	// Redirect to provider's consent page
 	http.Redirect(w, r, authURL, http.StatusTemporaryRedirect)
@@ -105,7 +115,7 @@ func (p *Plugin) HandleCallback(w http.ResponseWriter, r *http.Request) {
 		TokenType:   "Bearer",
 	}
 
-	if mcpSession, err := r.Cookie("mcp_session"); err == nil {
+	if mcpSession, err := r.Cookie("mcp_session"); err == nil && mcpSession.Value != "" {
 		authorizedSessions.LoadOrStore(mcpSession.Value, "Bearer "+token.AccessToken)
 		waiter, ok := authorizedSessionsWG.Load(mcpSession.Value)
 		if ok {
