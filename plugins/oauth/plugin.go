@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/centralmind/gateway/prompter"
+	"github.com/sirupsen/logrus"
 	"net/http"
 	"net/url"
 	"strings"
@@ -80,6 +81,9 @@ type Plugin struct {
 func (p *Plugin) EnrichMCP(tooler plugins.MCPTooler) {
 	u, _ := url.Parse(p.config.RedirectURL)
 	tooler.Server().AddAuthorizer(func(r *http.Request) bool {
+		if r.Header.Get("MCP-Protocol-Version") <= "2024" {
+			return true
+		}
 		if r.Header.Get("Authorization") == "" {
 			return false
 		}
@@ -109,6 +113,7 @@ Print information about who sits behind the keyboard, authorization info about u
 		}, nil
 	})
 	tooler.Server().AddToolMiddleware(func(ctx context.Context, tool server.ServerTool, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		logrus.Infof("MCP Tool: %s \nRequest: \n%v", tool.Tool.Name, prompter.Yamlify(request.Params.Arguments))
 		authHeader := xcontext.Header(ctx, p.config.TokenHeader)
 		if authHeader == "" {
 			ss, ok := authorizedSessions.Load(xcontext.Session(ctx))
