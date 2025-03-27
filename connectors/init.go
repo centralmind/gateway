@@ -32,16 +32,29 @@ var configs = map[string]Config{}
 
 func Register[TConfig Config](f func(cfg TConfig) (Connector, error)) {
 	var t TConfig
-	types := strings.Split(t.Type(), "|")
-	for _, typ := range types {
-		interceptors[typ] = func(a any) (Connector, error) {
-			cfg, err := remapper.Remap[TConfig](a)
-			if err != nil {
-				return nil, xerrors.Errorf("unable to remap: %w", err)
-			}
-			return f(cfg)
+	interceptors[t.Type()] = func(a any) (Connector, error) {
+		cfg, err := remapper.Remap[TConfig](a)
+		if err != nil {
+			return nil, xerrors.Errorf("unable to remap: %w", err)
 		}
-		configs[typ] = t
+		return f(cfg)
+	}
+	configs[t.Type()] = t
+}
+
+// RegisterAlias registers additional names for an existing connector type
+func RegisterAlias(typ string, aliases ...string) {
+	f, ok := interceptors[typ]
+	if !ok {
+		return
+	}
+	cfg, ok := configs[typ]
+	if !ok {
+		return
+	}
+	for _, alias := range aliases {
+		interceptors[alias] = f
+		configs[alias] = cfg
 	}
 }
 

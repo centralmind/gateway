@@ -29,6 +29,7 @@ func init() {
 			base:   &connectors.BaseConnector{DB: db},
 		}, nil
 	})
+	connectors.RegisterAlias("postgres", "postgresql")
 }
 
 // Connector implements the connectors.Connector interface for PostgreSQL
