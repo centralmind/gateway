@@ -22,11 +22,6 @@ func init() {
 
 		safetyGuardRails := "access_mode=READ_ONLY&allow_community_extensions=false"
 
-		// Environment variables are now expanded in model/model.go
-
-		print("init sql:")
-		print(cfg.InitSQL)
-
 		// Add READ_ONLY mode if connection string is not empty and not in-memory
 		if connStr != "" && !strings.Contains(connStr, ":memory:") {
 			if strings.Contains(connStr, "?") {
