@@ -10,7 +10,7 @@ import (
 	"github.com/centralmind/gateway/connectors"
 	"github.com/centralmind/gateway/model"
 	"github.com/jmoiron/sqlx"
-	_ "github.com/marcboeker/go-duckdb"
+	_ "github.com/marcboeker/go-duckdb/v2"
 	"golang.org/x/xerrors"
 )
 
@@ -22,6 +22,11 @@ func init() {
 
 		safetyGuardRails := "access_mode=READ_ONLY&allow_community_extensions=false"
 
+		// Environment variables are now expanded in model/model.go
+
+		print("init sql:")
+		print(cfg.InitSQL)
+
 		// Add READ_ONLY mode if connection string is not empty and not in-memory
 		if connStr != "" && !strings.Contains(connStr, ":memory:") {
 			if strings.Contains(connStr, "?") {
@@ -32,10 +37,27 @@ func init() {
 		}
 
 		db, err := sqlx.Connect("duckdb", connStr)
-
 		if err != nil {
 			return nil, fmt.Errorf("unable to connect to duckdb: %v", err)
 		}
+
+		// Execute initialization SQL if provided
+		if cfg.InitSQL != "" {
+			// Split SQL commands by semicolon and execute each one
+
+			commands := strings.Split(cfg.InitSQL, ";")
+			for _, cmd := range commands {
+				cmd = strings.TrimSpace(cmd)
+				if cmd == "" {
+					continue
+				}
+				_, err = db.Exec(cmd)
+				if err != nil {
+					return nil, fmt.Errorf("failed to execute initialization SQL: %v", err)
+				}
+			}
+		}
+
 		return &Connector{
 			config: cfg,
 			db:     db,
@@ -94,15 +116,7 @@ func (c *Connector) GuessColumnType(sqlType string) model.ColumnType {
 }
 
 func (c Connector) Sample(ctx context.Context, table model.Table) ([]map[string]any, error) {
-	tx, err := c.db.BeginTxx(ctx, &sql.TxOptions{
-		ReadOnly: true,
-	})
-	if err != nil {
-		return nil, xerrors.Errorf("BeginTx failed with error: %w", err)
-	}
-	defer tx.Commit()
-
-	rows, err := tx.NamedQuery(fmt.Sprintf("SELECT * FROM %s LIMIT 5", table.Name), map[string]any{})
+	rows, err := c.db.NamedQueryContext(ctx, fmt.Sprintf("SELECT * FROM %s LIMIT 5", table.Name), map[string]any{})
 	if err != nil {
 		return nil, xerrors.Errorf("unable to query db: %w", err)
 	}
@@ -121,7 +135,7 @@ func (c Connector) Sample(ctx context.Context, table model.Table) ([]map[string]
 
 func (c Connector) Discovery(ctx context.Context) ([]model.Table, error) {
 	// Query all tables in the database
-	rows, err := c.db.Query(`
+	rows, err := c.db.QueryContext(ctx, `
 		SELECT table_name 
 		FROM information_schema.tables 
 		WHERE table_type = 'BASE TABLE'
@@ -146,7 +160,7 @@ func (c Connector) Discovery(ctx context.Context) ([]model.Table, error) {
 		// Get the total row count for this table
 		var rowCount int
 		countQuery := fmt.Sprintf("SELECT COUNT(*) FROM %s", tableName)
-		err = c.db.Get(&rowCount, countQuery)
+		err = c.db.GetContext(ctx, &rowCount, countQuery)
 		if err != nil {
 			return nil, xerrors.Errorf("unable to get row count for table %s: %w", tableName, err)
 		}
@@ -249,15 +263,7 @@ func (c Connector) Query(ctx context.Context, endpoint model.Endpoint, params ma
 }
 
 func (c Connector) LoadsColumns(ctx context.Context, tableName string) ([]model.ColumnSchema, error) {
-	tx, err := c.db.BeginTxx(ctx, &sql.TxOptions{
-		ReadOnly: true,
-	})
-	if err != nil {
-		return nil, xerrors.Errorf("BeginTx failed with error: %w", err)
-	}
-	defer tx.Commit()
-
-	rows, err := tx.QueryContext(
+	rows, err := c.db.QueryContext(
 		ctx,
 		`SELECT 
 			column_name,

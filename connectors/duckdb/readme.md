@@ -11,19 +11,23 @@ DuckDB connector allows querying DuckDB databases, which is an embedded analytic
 | type | string | yes | constant: `duckdb` |
 | hosts | string[] | no* | List of paths (only first path is used) |
 | database | string | no* | Database file name, will be opened in readonly mode |
-
-
-
+| init_sql | string | no | SQL commands to execute on connection initialization (e.g. installing extensions, attaching databases) |
 
 ## Config Examples
 
-1. Using directory path in hosts:
+1. Using directory path in hosts with initialization SQL:
 ```yaml
 connection:
   type: duckdb
   hosts:
     - ./data    # relative path to directory
   database: analytics.duckdb
+  init_sql: |
+    FORCE INSTALL aws FROM core_nightly;
+    FORCE INSTALL httpfs FROM core_nightly;
+    FORCE INSTALL iceberg FROM core_nightly;
+    CREATE TABLE weather AS
+            SELECT * FROM read_csv_auto('https://raw.githubusercontent.com/duckdb/duckdb-web/main/data/weather.csv');
 ```
 
 2. Using full file path in hosts:
@@ -58,6 +62,7 @@ connection:
 connection:
 
 ```
+
 6. Using in-memory mode, or just put ":memory:":
 ```yaml
 connection: ":memory:"
@@ -95,3 +100,4 @@ The final database path is determined as follows:
 - Both forward slashes `/` and backslashes `\` are supported for Windows paths
 - Relative paths are resolved relative to the current working directory
 - Database works only in Read-only mode
+- The `init_sql` field allows executing multiple SQL commands on connection initialization, separated by semicolons

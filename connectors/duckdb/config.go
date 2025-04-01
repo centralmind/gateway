@@ -18,6 +18,7 @@ type Config struct {
 	ReadOnly   bool     `json:"read_only" yaml:"read_only"`     // Whether to open database in read-only mode
 	Memory     bool     `json:"memory" yaml:"memory"`           // Whether to create an in-memory database
 	ConnString string   `json:"conn_string" yaml:"conn_string"` // Direct connection string
+	InitSQL    string   `json:"init_sql" yaml:"init_sql"`       // SQL commands to execute on connection initialization
 }
 
 func (c Config) Readonly() bool {
