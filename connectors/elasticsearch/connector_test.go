@@ -5,12 +5,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/centralmind/gateway/model"
-	"github.com/docker/go-connections/nat"
-	"github.com/sirupsen/logrus"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/centralmind/gateway/model"
+	"github.com/docker/go-connections/nat"
+	"github.com/sirupsen/logrus"
 
 	"github.com/centralmind/gateway/connectors"
 	es "github.com/elastic/go-elasticsearch/v8"
@@ -98,7 +99,7 @@ func TestElasticsearchConnectorWithAuth(t *testing.T) {
 
 	// Test: Discover Indices
 	t.Run("Discover Indices", func(t *testing.T) {
-		indices, err := connector.Discovery(ctx)
+		indices, err := connector.Discovery(ctx, nil)
 		assert.NoError(t, err)
 		assert.NotEmpty(t, indices)
 

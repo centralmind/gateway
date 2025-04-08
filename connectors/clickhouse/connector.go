@@ -149,10 +149,41 @@ func (c Connector) Sample(ctx context.Context, table model.Table) ([]map[string]
 	return res, nil
 }
 
-func (c Connector) Discovery(ctx context.Context) ([]model.Table, error) {
-	rows, err := c.db.QueryContext(ctx, fmt.Sprintf("SHOW TABLES FROM %s", c.config.Database))
+func (c Connector) Discovery(ctx context.Context, tablesList []string) ([]model.Table, error) {
+	// Create a map for quick lookups if tablesList is provided
+	tableSet := make(map[string]bool)
+	if len(tablesList) > 0 {
+		for _, table := range tablesList {
+			tableSet[table] = true
+		}
+	}
+
+	var query string
+	var args []interface{}
+
+	// Base query to get tables
+	baseQuery := `
+		SELECT name 
+		FROM system.tables 
+		WHERE database = ?`
+	args = append(args, c.config.Database)
+
+	if len(tablesList) > 0 {
+		// If specific tables are requested, add an IN clause
+		placeholders := make([]string, len(tablesList))
+		for i, table := range tablesList {
+			placeholders[i] = "?"
+			args = append(args, table)
+		}
+		query = baseQuery + fmt.Sprintf(" AND name IN (%s)", strings.Join(placeholders, ","))
+	} else {
+		// Otherwise, get all tables
+		query = baseQuery
+	}
+
+	rows, err := c.db.QueryContext(ctx, query, args...)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("unable to query tables: %w", err)
 	}
 	defer rows.Close()
 
@@ -160,23 +191,25 @@ func (c Connector) Discovery(ctx context.Context) ([]model.Table, error) {
 	for rows.Next() {
 		var tableName string
 		if err := rows.Scan(&tableName); err != nil {
-			return nil, err
+			return nil, xerrors.Errorf("unable to scan table name: %w", err)
 		}
+
 		columns, err := c.LoadsColumns(ctx, tableName)
 		if err != nil {
-			return nil, err
+			return nil, xerrors.Errorf("unable to load columns for table %s: %w", tableName, err)
 		}
 
 		// Get the total row count for this table
 		var rowCount int
-		countQuery := fmt.Sprintf("SELECT COUNT(*) FROM `%s`.`%s`", c.config.Database, tableName)
+		qualifiedTableName := fmt.Sprintf("`%s`.`%s`", c.config.Database, tableName)
+		countQuery := fmt.Sprintf("SELECT COUNT(*) FROM %s", qualifiedTableName)
 		err = c.db.Get(&rowCount, countQuery)
 		if err != nil {
 			return nil, xerrors.Errorf("unable to get row count for table %s: %w", tableName, err)
 		}
 
 		table := model.Table{
-			Name:     fmt.Sprintf(`"%s"."%s"`, c.config.Database, tableName),
+			Name:     tableName,
 			Columns:  columns,
 			RowCount: rowCount,
 		}

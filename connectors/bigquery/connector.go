@@ -170,11 +170,16 @@ func (c *Connector) Sample(ctx context.Context, table model.Table) ([]map[string
 	return results, nil
 }
 
-func (c *Connector) Discovery(ctx context.Context) ([]model.Table, error) {
-	ds := c.client.Dataset(c.config.Dataset)
+func (c *Connector) Discovery(ctx context.Context, tablesList []string) ([]model.Table, error) {
+	// Create a map for quick lookups if tablesList is provided
+	tableSet := make(map[string]bool)
+	if len(tablesList) > 0 {
+		for _, table := range tablesList {
+			tableSet[table] = true
+		}
+	}
 
-	// Get list of tables
-	it := ds.Tables(ctx)
+	it := c.client.Dataset(c.config.Dataset).Tables(ctx)
 
 	var tables []model.Table
 	for {
@@ -183,43 +188,69 @@ func (c *Connector) Discovery(ctx context.Context) ([]model.Table, error) {
 			break
 		}
 		if err != nil {
-			return nil, xerrors.Errorf("error iterating tables: %w", err)
+			return nil, xerrors.Errorf("failed to list tables: %w", err)
 		}
 
-		// Get table metadata
-		md, err := tbl.Metadata(ctx)
+		// Skip tables not in the list if a list was provided
+		if len(tablesList) > 0 && !tableSet[tbl.TableID] {
+			continue
+		}
+
+		// Get the table metadata to access its schema
+		meta, err := tbl.Metadata(ctx)
 		if err != nil {
-			return nil, xerrors.Errorf("error getting table metadata: %w", err)
+			return nil, xerrors.Errorf("failed to get table metadata: %w", err)
 		}
 
-		columns := make([]model.ColumnSchema, len(md.Schema))
-		for i, field := range md.Schema {
-			columns[i] = model.ColumnSchema{
-				Name:       field.Name,
-				Type:       c.GuessColumnType(string(field.Type)),
-				PrimaryKey: false,
+		// Convert BigQuery schema to our model
+		var columns []model.ColumnSchema
+		for _, field := range meta.Schema {
+			columns = append(columns, model.ColumnSchema{
+				Name: field.Name,
+				Type: c.GuessColumnType(string(field.Type)),
+			})
+		}
+
+		// Get row count using approximate statistics
+		var rowCount int
+		if meta.NumRows > 0 {
+			rowCount = int(meta.NumRows)
+		} else {
+			// If statistics not available, do a count query
+			q := c.client.Query(fmt.Sprintf("SELECT COUNT(*) as count FROM `%s.%s.%s`",
+				c.config.ProjectID, c.config.Dataset, tbl.TableID))
+
+			job, err := q.Run(ctx)
+			if err != nil {
+				return nil, xerrors.Errorf("failed to run count query: %w", err)
 			}
-		}
 
-		// Get row count
-		q := c.client.Query(fmt.Sprintf("SELECT COUNT(*) as count FROM `%s.%s.%s`",
-			c.config.ProjectID, c.config.Dataset, tbl.TableID))
+			status, err := job.Wait(ctx)
+			if err != nil {
+				return nil, xerrors.Errorf("failed to wait for count query: %w", err)
+			}
 
-		it, err := q.Read(ctx)
-		if err != nil {
-			return nil, xerrors.Errorf("error executing query: %w", err)
-		}
+			if status.Err() != nil {
+				return nil, xerrors.Errorf("count query failed: %w", status.Err())
+			}
 
-		var row struct{ Count int64 }
-		err = it.Next(&row)
-		if err != nil {
-			return nil, xerrors.Errorf("error getting row count: %w", err)
+			iter, err := job.Read(ctx)
+			if err != nil {
+				return nil, xerrors.Errorf("failed to read count query results: %w", err)
+			}
+
+			var row struct{ Count int64 }
+			if err := iter.Next(&row); err != nil {
+				return nil, xerrors.Errorf("failed to get count: %w", err)
+			}
+
+			rowCount = int(row.Count)
 		}
 
 		tables = append(tables, model.Table{
 			Name:     tbl.TableID,
 			Columns:  columns,
-			RowCount: int(row.Count),
+			RowCount: rowCount,
 		})
 	}
 

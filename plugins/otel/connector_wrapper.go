@@ -3,9 +3,10 @@ package otel
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/centralmind/gateway/connectors"
 	"github.com/centralmind/gateway/xcontext"
-	"time"
 
 	"github.com/centralmind/gateway/model"
 	"go.opentelemetry.io/otel/attribute"
@@ -72,8 +73,8 @@ func (c Connector) Query(ctx context.Context, endpoint model.Endpoint, params ma
 	return result, nil
 }
 
-func (c Connector) Discovery(ctx context.Context) ([]model.Table, error) {
-	return c.inner.Discovery(ctx)
+func (c Connector) Discovery(ctx context.Context, tablesList []string) ([]model.Table, error) {
+	return c.inner.Discovery(ctx, tablesList)
 }
 
 func (c Connector) Sample(ctx context.Context, table model.Table) ([]map[string]any, error) {

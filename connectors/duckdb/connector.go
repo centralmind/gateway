@@ -137,13 +137,43 @@ func (c Connector) Sample(ctx context.Context, table model.Table) ([]map[string]
 	return res, nil
 }
 
-func (c Connector) Discovery(ctx context.Context) ([]model.Table, error) {
-	// Query all tables in the database
-	rows, err := c.db.QueryContext(ctx, `
-		SELECT table_name 
-		FROM information_schema.tables 
-		WHERE table_type = 'BASE TABLE'
-		AND table_schema = 'main'`)
+func (c Connector) Discovery(ctx context.Context, tablesList []string) ([]model.Table, error) {
+	// Create a map for quick lookups if tablesList is provided
+	tableSet := make(map[string]bool)
+	if len(tablesList) > 0 {
+		for _, table := range tablesList {
+			tableSet[table] = true
+		}
+	}
+
+	var query string
+	var args []interface{}
+
+	if len(tablesList) > 0 {
+		// If specific tables are requested, build a query with IN clause
+		placeholders := make([]string, len(tablesList))
+		args = make([]interface{}, len(tablesList))
+		for i, table := range tablesList {
+			placeholders[i] = fmt.Sprintf("$%d", i+1)
+			args[i] = table
+		}
+		query = fmt.Sprintf(`
+			SELECT table_name 
+			FROM information_schema.tables 
+			WHERE table_type = 'BASE TABLE'
+			AND table_schema = 'main'
+			AND table_name IN (%s)`, strings.Join(placeholders, ","))
+	} else {
+		// Otherwise, query all tables
+		query = `
+			SELECT table_name 
+			FROM information_schema.tables 
+			WHERE table_type = 'BASE TABLE'
+			AND table_schema = 'main'`
+	}
+
+	// Query tables in the database
+	rows, err := c.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, xerrors.Errorf("unable to query tables: %w", err)
 	}

@@ -66,7 +66,7 @@ func TestMongoDBConnector(t *testing.T) {
 	})
 
 	t.Run("Discovery Collections", func(t *testing.T) {
-		tables, err := connector.Discovery(ctx)
+		tables, err := connector.Discovery(ctx, nil)
 		assert.NoError(t, err)
 		assert.NotEmpty(t, tables)
 

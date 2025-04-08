@@ -140,7 +140,7 @@ func (c Connector) Sample(ctx context.Context, table model.Table) ([]map[string]
 	return res, nil
 }
 
-func (c Connector) Discovery(ctx context.Context) ([]model.Table, error) {
+func (c Connector) Discovery(ctx context.Context, tablesList []string) ([]model.Table, error) {
 	tx, err := c.base.DB.BeginTxx(ctx, &sql.TxOptions{
 		ReadOnly: c.Config().Readonly(),
 	})
@@ -148,7 +148,34 @@ func (c Connector) Discovery(ctx context.Context) ([]model.Table, error) {
 		return nil, xerrors.Errorf("BeginTx failed with error: %w", err)
 	}
 	defer tx.Commit()
-	rows, err := tx.QueryContext(ctx, "SHOW TABLES")
+
+	// Create a map for quick lookups if tablesList is provided
+	tableSet := make(map[string]bool)
+	if len(tablesList) > 0 {
+		for _, table := range tablesList {
+			tableSet[table] = true
+		}
+	}
+
+	var query string
+	var args []interface{}
+
+	if len(tablesList) > 0 {
+		// If specific tables are requested, only query those
+		placeholders := make([]string, len(tablesList))
+		args = make([]interface{}, len(tablesList))
+		for i, table := range tablesList {
+			placeholders[i] = "?"
+			args[i] = table
+		}
+		query = fmt.Sprintf("SHOW TABLES WHERE Tables_in_%s IN (%s)",
+			c.config.Database, strings.Join(placeholders, ","))
+	} else {
+		// Otherwise, query all tables
+		query = "SHOW TABLES"
+	}
+
+	rows, err := tx.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -160,6 +187,12 @@ func (c Connector) Discovery(ctx context.Context) ([]model.Table, error) {
 		if err := rows.Scan(&tableName); err != nil {
 			return nil, err
 		}
+
+		// Skip tables not in the list if a list was provided
+		if len(tablesList) > 0 && !tableSet[tableName] {
+			continue
+		}
+
 		columns, err := c.LoadsColumns(ctx, tableName)
 		if err != nil {
 			return nil, err

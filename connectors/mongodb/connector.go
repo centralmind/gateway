@@ -116,9 +116,17 @@ func replaceParams(filter interface{}, params map[string]any) interface{} {
 	return filter
 }
 
-func (c *Connector) Discovery(ctx context.Context) ([]model.Table, error) {
+func (c *Connector) Discovery(ctx context.Context, tablesList []string) ([]model.Table, error) {
 	// Get the database
 	db := c.client.Database(c.config.Database)
+
+	// Create a map for quick lookups if tablesList is provided
+	tableSet := make(map[string]bool)
+	if len(tablesList) > 0 {
+		for _, table := range tablesList {
+			tableSet[table] = true
+		}
+	}
 
 	// Get all collection names
 	collections, err := db.ListCollectionNames(ctx, map[string]interface{}{})
@@ -128,6 +136,11 @@ func (c *Connector) Discovery(ctx context.Context) ([]model.Table, error) {
 
 	var tables []model.Table
 	for _, collectionName := range collections {
+		// Skip collections not in the list if a list was provided
+		if len(tablesList) > 0 && !tableSet[collectionName] {
+			continue
+		}
+
 		// Get collection
 		collection := db.Collection(collectionName)
 
@@ -149,10 +162,17 @@ func (c *Connector) Discovery(ctx context.Context) ([]model.Table, error) {
 			}
 		}
 
+		// Get document count for the collection
+		count, err := collection.CountDocuments(ctx, map[string]interface{}{})
+		if err != nil {
+			return nil, xerrors.Errorf("unable to get document count for collection %s: %w", collectionName, err)
+		}
+
 		// Create table
 		tables = append(tables, model.Table{
-			Name:    collectionName,
-			Columns: columns,
+			Name:     collectionName,
+			Columns:  columns,
+			RowCount: int(count),
 		})
 	}
 

@@ -5,13 +5,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"strings"
+
 	"github.com/centralmind/gateway/castx"
 	"github.com/centralmind/gateway/connectors"
 	"github.com/centralmind/gateway/model"
 	"github.com/elastic/go-elasticsearch/v8"
 	"golang.org/x/xerrors"
-	"io"
-	"strings"
 )
 
 const limitOfDocuments = 5
@@ -131,7 +132,15 @@ func (c *Connector) Query(ctx context.Context, endpoint model.Endpoint, params m
 }
 
 // Discovery retrieves available indices in Elasticsearch
-func (c *Connector) Discovery(ctx context.Context) ([]model.Table, error) {
+func (c *Connector) Discovery(ctx context.Context, tablesList []string) ([]model.Table, error) {
+	// Create a map for quick lookups if tablesList is provided
+	tableSet := make(map[string]bool)
+	if len(tablesList) > 0 {
+		for _, table := range tablesList {
+			tableSet[table] = true
+		}
+	}
+
 	// Get a list of indices, but limit processing for large indices
 	res, err := c.client.Cat.Indices(
 		c.client.Cat.Indices.WithContext(ctx),
@@ -158,6 +167,11 @@ func (c *Connector) Discovery(ctx context.Context) ([]model.Table, error) {
 	for _, index := range indices {
 		indexName, ok := index["index"].(string)
 		if !ok {
+			continue
+		}
+
+		// Skip indices not in the list if a list was provided
+		if len(tablesList) > 0 && !tableSet[indexName] {
 			continue
 		}
 

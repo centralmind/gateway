@@ -123,18 +123,49 @@ func (c Connector) Sample(ctx context.Context, table model.Table) ([]map[string]
 	return res, nil
 }
 
-func (c Connector) Discovery(ctx context.Context) ([]model.Table, error) {
+func (c Connector) Discovery(ctx context.Context, tablesList []string) ([]model.Table, error) {
 	// Use the schema from config, default to 'dbo' if not specified
 	schema := "dbo"
 	if c.config.Schema != "" {
 		schema = c.config.Schema
 	}
 
-	rows, err := c.db.Query(`
-		SELECT TABLE_NAME 
-		FROM INFORMATION_SCHEMA.TABLES 
-		WHERE TABLE_SCHEMA = @p1 
-		AND TABLE_TYPE = 'BASE TABLE'`, schema)
+	// Create a map for quick lookups if tablesList is provided
+	tableSet := make(map[string]bool)
+	if len(tablesList) > 0 {
+		for _, table := range tablesList {
+			tableSet[table] = true
+		}
+	}
+
+	// Build query with or without table filter
+	var query string
+	var args []interface{}
+	args = append(args, schema) // First parameter is always schema
+
+	if len(tablesList) > 0 {
+		// Build dynamic IN clause with proper parameterization
+		placeholders := make([]string, len(tablesList))
+		for i, table := range tablesList {
+			placeholders[i] = fmt.Sprintf("@p%d", i+2) // Start from @p2 since @p1 is schema
+			args = append(args, table)
+		}
+
+		query = fmt.Sprintf(`
+			SELECT TABLE_NAME 
+			FROM INFORMATION_SCHEMA.TABLES 
+			WHERE TABLE_SCHEMA = @p1 
+			AND TABLE_TYPE = 'BASE TABLE'
+			AND TABLE_NAME IN (%s)`, strings.Join(placeholders, ","))
+	} else {
+		query = `
+			SELECT TABLE_NAME 
+			FROM INFORMATION_SCHEMA.TABLES 
+			WHERE TABLE_SCHEMA = @p1 
+			AND TABLE_TYPE = 'BASE TABLE'`
+	}
+
+	rows, err := c.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, xerrors.Errorf("unable to query tables: %w", err)
 	}

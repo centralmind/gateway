@@ -18,7 +18,7 @@ type Config interface {
 type Connector interface {
 	Ping(ctx context.Context) error
 	Query(ctx context.Context, endpoint model.Endpoint, params map[string]any) ([]map[string]any, error)
-	Discovery(ctx context.Context) ([]model.Table, error)
+	Discovery(ctx context.Context, tablesList []string) ([]model.Table, error)
 	Sample(ctx context.Context, table model.Table) ([]map[string]any, error)
 	InferQuery(ctx context.Context, query string) ([]model.ColumnSchema, error)
 	Config() Config

@@ -102,7 +102,7 @@ func (s *MCPServer) prepareQuery(ctx context.Context, request mcp.CallToolReques
 }
 
 func (s *MCPServer) discoverData(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	data, err := s.connector.Discovery(ctx)
+	data, err := s.connector.Discovery(ctx, nil)
 	if err != nil {
 		return nil, xerrors.Errorf("unable to discover data: %w", err)
 	}
@@ -111,7 +111,7 @@ func (s *MCPServer) discoverData(ctx context.Context, request mcp.CallToolReques
 		Type: "text",
 		Text: fmt.Sprintf("Found a %v tables-(s).", len(data)),
 	})
-	allTables, err := s.connector.Discovery(ctx)
+	allTables, err := s.connector.Discovery(ctx, nil)
 	if err != nil {
 		return nil, xerrors.Errorf("unable to discover all tables: %w", err)
 	}
@@ -156,7 +156,7 @@ func (s *MCPServer) discoverData(ctx context.Context, request mcp.CallToolReques
 }
 
 func (s *MCPServer) listTables(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	data, err := s.connector.Discovery(ctx)
+	data, err := s.connector.Discovery(ctx, nil)
 	if err != nil {
 		return nil, xerrors.Errorf("unable to discover data: %w", err)
 	}

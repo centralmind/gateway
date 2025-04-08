@@ -51,7 +51,7 @@ func TestConnector(t *testing.T) {
 	})
 
 	t.Run("Discovery Tables", func(t *testing.T) {
-		tables, err := connector.Discovery(ctx)
+		tables, err := connector.Discovery(ctx, nil)
 		require.NoError(t, err)
 		require.Len(t, tables, 2)
 

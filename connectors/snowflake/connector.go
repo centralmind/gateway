@@ -135,8 +135,48 @@ func (c Connector) Sample(ctx context.Context, table model.Table) ([]map[string]
 	return res, nil
 }
 
-func (c Connector) Discovery(ctx context.Context) ([]model.Table, error) {
-	rows, err := c.db.QueryContext(ctx, fmt.Sprintf("SHOW TABLES IN SCHEMA %s.%s", c.config.Database, c.config.Schema))
+func (c Connector) Discovery(ctx context.Context, tablesList []string) ([]model.Table, error) {
+	// Create a map for quick lookups if tablesList is provided
+	tableSet := make(map[string]bool)
+	if len(tablesList) > 0 {
+		for _, table := range tablesList {
+			tableSet[table] = true
+		}
+	}
+
+	// Create base query
+	queryBase := fmt.Sprintf("SHOW TABLES IN SCHEMA %s.%s", c.config.Database, c.config.Schema)
+
+	// If specific tables are requested, filter with LIKE conditions
+	// Note: Snowflake doesn't support WHERE IN for SHOW TABLES, so we need to use individual queries
+	var allTables []model.Table
+
+	if len(tablesList) > 0 {
+		// For each requested table, query individually
+		for _, tableName := range tablesList {
+			// Use LIKE to match the exact table name
+			query := queryBase + fmt.Sprintf(" LIKE '%s'", tableName)
+			tables, err := c.executeTableQuery(ctx, query)
+			if err != nil {
+				return nil, err
+			}
+			allTables = append(allTables, tables...)
+		}
+	} else {
+		// If no specific tables are requested, get all tables
+		tables, err := c.executeTableQuery(ctx, queryBase)
+		if err != nil {
+			return nil, err
+		}
+		allTables = tables
+	}
+
+	return allTables, nil
+}
+
+// Helper function to execute table queries and process results
+func (c Connector) executeTableQuery(ctx context.Context, query string) ([]model.Table, error) {
+	rows, err := c.db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err
 	}

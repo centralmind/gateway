@@ -109,13 +109,40 @@ func (c Connector) Sample(ctx context.Context, table model.Table) ([]map[string]
 	return res, nil
 }
 
-func (c Connector) Discovery(ctx context.Context) ([]model.Table, error) {
-	schema := c.config.Schema
+func (c Connector) Discovery(ctx context.Context, tablesList []string) ([]model.Table, error) {
+	// Create a map for quick lookups if tablesList is provided
+	tableSet := make(map[string]bool)
+	if len(tablesList) > 0 {
+		for _, table := range tablesList {
+			tableSet[table] = true
+			// Oracle table names are typically uppercase
+			tableSet[strings.ToUpper(table)] = true
+		}
+	}
 
-	rows, err := c.db.Query(`
-		SELECT TABLE_NAME 
-		FROM ALL_TABLES 
-		WHERE OWNER = :1`, schema)
+	var query string
+	var args []interface{}
+
+	if len(tablesList) > 0 {
+		// If specific tables are requested, build a query with IN clause
+		placeholders := make([]string, len(tablesList))
+		args = make([]interface{}, len(tablesList))
+
+		for i, table := range tablesList {
+			placeholders[i] = ":" + strconv.Itoa(i+1)
+			args[i] = strings.ToUpper(table) // Oracle table names are typically stored uppercase
+		}
+
+		query = fmt.Sprintf(`
+			SELECT table_name 
+			FROM user_tables 
+			WHERE table_name IN (%s)`, strings.Join(placeholders, ","))
+	} else {
+		// Otherwise, query all tables
+		query = `SELECT table_name FROM user_tables`
+	}
+
+	rows, err := c.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, xerrors.Errorf("unable to query tables: %w", err)
 	}
@@ -125,18 +152,17 @@ func (c Connector) Discovery(ctx context.Context) ([]model.Table, error) {
 	for rows.Next() {
 		var tableName string
 		if err := rows.Scan(&tableName); err != nil {
-			return nil, xerrors.Errorf("unable to scan table name: %w", err)
+			return nil, err
 		}
 
 		columns, err := c.LoadsColumns(ctx, tableName)
 		if err != nil {
-			return nil, xerrors.Errorf("unable to load columns for table %s: %w", tableName, err)
+			return nil, err
 		}
 
 		// Get the total row count for this table
 		var rowCount int
-		qualifiedTableName := fmt.Sprintf("%s.%s", schema, tableName)
-		countQuery := fmt.Sprintf("SELECT COUNT(*) FROM %s", qualifiedTableName)
+		countQuery := fmt.Sprintf("SELECT COUNT(*) FROM \"%s\"", tableName)
 		err = c.db.Get(&rowCount, countQuery)
 		if err != nil {
 			return nil, xerrors.Errorf("unable to get row count for table %s: %w", tableName, err)

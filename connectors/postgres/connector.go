@@ -124,30 +124,64 @@ func (c Connector) Sample(ctx context.Context, table model.Table) ([]map[string]
 	return res, nil
 }
 
-func (c Connector) Discovery(ctx context.Context) ([]model.Table, error) {
-	cfg, err := c.config.MakeConfig()
+func (c Connector) Discovery(ctx context.Context, tablesList []string) ([]model.Table, error) {
+	tx, err := c.base.DB.BeginTxx(ctx, &sql.TxOptions{
+		ReadOnly: c.Config().Readonly(),
+	})
 	if err != nil {
-		return nil, xerrors.Errorf("unable to prepare pg config: %w", err)
+		return nil, xerrors.Errorf("BeginTx failed with error: %w", err)
 	}
-	db := sqlx.NewDb(stdlib.OpenDB(*cfg), "pgx")
+	defer tx.Commit()
 
-	// Use the schema from config, default to 'public' if not specified
-	schema := "public"
-	if c.config.Schema != "" {
-		schema = c.config.Schema
+	// Create a map for quick lookups if tablesList is provided
+	tableSet := make(map[string]bool)
+	if len(tablesList) > 0 {
+		for _, table := range tablesList {
+			tableSet[table] = true
+		}
 	}
 
-	rows, err := db.Query("SELECT table_name FROM information_schema.tables WHERE table_schema = $1", schema)
+	var query string
+	var args []interface{}
+
+	if len(tablesList) > 0 {
+		// If specific tables are requested, only query those
+		placeholders := make([]string, len(tablesList))
+		args = make([]interface{}, len(tablesList))
+		for i, table := range tablesList {
+			placeholders[i] = fmt.Sprintf("$%d", i+1)
+			args[i] = table
+		}
+		query = fmt.Sprintf(`
+			SELECT table_name 
+			FROM information_schema.tables 
+			WHERE table_schema = 'public' 
+			AND table_type = 'BASE TABLE'
+			AND table_name IN (%s)
+		`, strings.Join(placeholders, ","))
+	} else {
+		// Otherwise, query all tables
+		query = `
+			SELECT table_name 
+			FROM information_schema.tables 
+			WHERE table_schema = 'public' 
+			AND table_type = 'BASE TABLE'
+		`
+	}
+
+	rows, err := tx.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
+
 	var tables []model.Table
 	for rows.Next() {
 		var tableName string
 		if err := rows.Scan(&tableName); err != nil {
 			return nil, err
 		}
+
 		columns, err := c.LoadsColumns(ctx, tableName)
 		if err != nil {
 			return nil, err
@@ -155,18 +189,16 @@ func (c Connector) Discovery(ctx context.Context) ([]model.Table, error) {
 
 		// Get the total row count for this table
 		var rowCount int
-		// Create schema-qualified table name
-		qualifiedTableName := fmt.Sprintf("\"%s\".\"%s\"", schema, tableName)
-		countQuery := fmt.Sprintf("SELECT COUNT(*) FROM %s", qualifiedTableName)
+		countQuery := fmt.Sprintf("SELECT COUNT(*) FROM %s", tableName)
 		err = c.db.Get(&rowCount, countQuery)
 		if err != nil {
 			return nil, xerrors.Errorf("unable to get row count for table %s: %w", tableName, err)
 		}
 
 		table := model.Table{
-			Name:     qualifiedTableName,
+			Name:     tableName,
 			Columns:  columns,
-			RowCount: rowCount, // Store the row count in the table struct
+			RowCount: rowCount,
 		}
 		tables = append(tables, table)
 	}

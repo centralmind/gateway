@@ -189,7 +189,8 @@ func (r *Rest) ListTablesHandler() gin.HandlerFunc {
 		ctx := c.Request.Context()
 		ctx = xcontext.WithHeader(ctx, c.Request.Header)
 
-		data, err := r.connector.Discovery(ctx)
+		// Get all tables and their structures
+		data, err := r.connector.Discovery(ctx, nil)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("unable to discover data: %v", err)})
 			return
@@ -229,7 +230,8 @@ func (r *Rest) DiscoverDataHandler() gin.HandlerFunc {
 		ctx := c.Request.Context()
 		ctx = xcontext.WithHeader(ctx, c.Request.Header)
 
-		allTables, err := r.connector.Discovery(ctx)
+		// Re-discover tables from database to validate our connector
+		allTables, err := r.connector.Discovery(ctx, nil)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("unable to discover all tables: %v", err)})
 			return

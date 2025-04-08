@@ -106,17 +106,18 @@ func TablesData(tablesList []string, connector connectors.Connector) ([]prompter
 	defer cancel()
 
 	logrus.Info("Step 2: Discover data")
-	allTables, err := connector.Discovery(ctx)
+	allTables, err := connector.Discovery(ctx, tablesList)
 	if err != nil {
 		return nil, err
 	}
 
 	tableSet := map[string]bool{}
 
-	for _, table := range tablesList {
-		tableSet[table] = true
-	}
-	if len(tablesList) == 0 {
+	if len(tablesList) > 0 {
+		for _, table := range tablesList {
+			tableSet[table] = true
+		}
+	} else {
 		for _, table := range allTables {
 			tableSet[table.Name] = true
 		}
@@ -125,17 +126,11 @@ func TablesData(tablesList []string, connector connectors.Connector) ([]prompter
 	// Show discovered tables
 	logrus.Info("Discovered Tables:")
 	for _, table := range allTables {
-		if tableSet[table.Name] {
-			logrus.Infof("  - "+cyan+"%s"+reset+": "+yellow+"%d"+reset+" columns, "+yellow+"%d"+reset+" rows", table.Name, len(table.Columns), table.RowCount)
-		}
+		logrus.Infof("  - "+cyan+"%s"+reset+": "+yellow+"%d"+reset+" columns, "+yellow+"%d"+reset+" rows", table.Name, len(table.Columns), table.RowCount)
 	}
 
-	// Check if any tables were found after filtering
-	var filteredTablesCount int
-	for range tableSet {
-		filteredTablesCount++
-	}
-	if filteredTablesCount == 0 {
+	// Check if any tables were found
+	if len(allTables) == 0 {
 		return nil, xerrors.Errorf("error: no tables found to process. Please verify your database connection and table selection criteria")
 	}
 
@@ -145,9 +140,6 @@ func TablesData(tablesList []string, connector connectors.Connector) ([]prompter
 	logrus.Info("Step 3: Sample data from tables")
 	var tablesToGenerate []prompter.TableData
 	for _, table := range allTables {
-		if !tableSet[table.Name] {
-			continue
-		}
 		sample, err := connector.Sample(ctx, table)
 		if err != nil {
 			return nil, err
