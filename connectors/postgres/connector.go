@@ -153,19 +153,17 @@ func (c Connector) Discovery(ctx context.Context, tablesList []string) ([]model.
 			args[i] = table
 		}
 		query = fmt.Sprintf(`
-			SELECT table_name 
+			SELECT table_name, table_schema
 			FROM information_schema.tables 
-			WHERE table_schema = 'public' 
-			AND table_type = 'BASE TABLE'
+			WHERE table_type = 'BASE TABLE'
 			AND table_name IN (%s)
 		`, strings.Join(placeholders, ","))
 	} else {
 		// Otherwise, query all tables
 		query = `
-			SELECT table_name 
+			SELECT table_name, table_schema
 			FROM information_schema.tables 
-			WHERE table_schema = 'public' 
-			AND table_type = 'BASE TABLE'
+			WHERE table_type = 'BASE TABLE'
 		`
 	}
 
@@ -177,9 +175,14 @@ func (c Connector) Discovery(ctx context.Context, tablesList []string) ([]model.
 
 	var tables []model.Table
 	for rows.Next() {
-		var tableName string
-		if err := rows.Scan(&tableName); err != nil {
+		var tableName, tableSchema string
+		if err := rows.Scan(&tableName, &tableSchema); err != nil {
 			return nil, err
+		}
+		if c.config.Schema != "" {
+			if tableSchema != c.config.Schema {
+				continue
+			}
 		}
 
 		columns, err := c.LoadsColumns(ctx, tableName)
@@ -187,16 +190,17 @@ func (c Connector) Discovery(ctx context.Context, tablesList []string) ([]model.
 			return nil, err
 		}
 
+		fqtn := fmt.Sprintf(`"%s"."%s"`, tableSchema, tableName)
 		// Get the total row count for this table
 		var rowCount int
-		countQuery := fmt.Sprintf("SELECT COUNT(*) FROM %s", tableName)
+		countQuery := fmt.Sprintf("SELECT COUNT(*) FROM %s", fqtn)
 		err = c.db.Get(&rowCount, countQuery)
 		if err != nil {
 			return nil, xerrors.Errorf("unable to get row count for table %s: %w", tableName, err)
 		}
 
 		table := model.Table{
-			Name:     tableName,
+			Name:     fqtn,
 			Columns:  columns,
 			RowCount: rowCount,
 		}

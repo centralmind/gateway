@@ -184,7 +184,7 @@ func (c Connector) Discovery(ctx context.Context, tablesList []string) ([]model.
 		}
 
 		table := model.Table{
-			Name:     tableName,
+			Name:     qualifiedTableName,
 			Columns:  columns,
 			RowCount: rowCount,
 		}
