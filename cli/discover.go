@@ -44,6 +44,11 @@ func init() {
 	})
 }
 
+type dummyConn struct {
+	Schema     string `yaml:"schema"`
+	ConnString string `yaml:"conn_string"`
+}
+
 func Discover() *cobra.Command {
 	var tables string
 	var aiProvider string
@@ -61,6 +66,7 @@ func Discover() *cobra.Command {
 	var promptFile string
 	var llmLogFile string
 	var dbDSN string
+	var dbSchema string
 	var typ string
 
 	cmd := &cobra.Command{
@@ -91,7 +97,14 @@ and ensures they follow best practices for AI agent interactions.`,
 			if typ == "" {
 				typ = strings.Split(dbDSN, ":")[0]
 			}
-			connector, err := connectors.New(typ, dbDSN)
+
+			var dbConfig any
+			dbConfig = dbDSN
+			if dbSchema != "" {
+				dbConfig = dummyConn{Schema: dbSchema, ConnString: dbDSN}
+			}
+
+			connector, err := connectors.New(typ, dbConfig)
 			if err != nil {
 				return xerrors.Errorf("Failed to create connector: %w", err)
 			}
@@ -184,6 +197,7 @@ and ensures they follow best practices for AI agent interactions.`,
 	}
 
 	cmd.Flags().StringVarP(&dbDSN, "connection-string", "C", "", "Database connection string (DSN) for direct database connection")
+	cmd.Flags().StringVar(&dbSchema, "db-schema", "", "Database schema for database connection, optional")
 	cmd.Flags().StringVar(&typ, "type", "", "Type of database to use (for example: postgres os mysql)")
 	cmd.Flags().StringVar(&tables, "tables", "", "Comma-separated list of tables to include (e.g., 'users,products,orders')")
 
