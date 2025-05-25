@@ -1,0 +1,150 @@
+api:
+  name: Snowflake Readonly API
+  description: "Snowflake Readonly API"
+  version: 1.0.0
+database:
+  type: snowflake
+  connection:
+    account: YHFCEQW-VS84270
+    user: GATEWAYCI
+    password: gatewayCI406PM1
+    database: GOCI
+    schema: PUBLIC
+    warehouse: COMPUTE_WH
+    role: ACCOUNTADMIN
+  tables:
+    - name: employees
+      columns:
+        - name: employee_id
+          type: integer
+          primary_key: true
+          pii: false
+        - name: first_name
+          type: string
+          primary_key: false
+          pii: true
+        - name: last_name
+          type: string
+          primary_key: false
+          pii: true
+        - name: email
+          type: string
+          primary_key: false
+          pii: true
+        - name: department
+          type: string
+          primary_key: false
+          pii: false
+        - name: salary
+          type: number
+          primary_key: false
+          pii: true
+        - name: hire_date
+          type: string
+          primary_key: false
+          pii: false
+      endpoints:
+        - http_method: GET
+          http_path: /employees
+          mcp_method: list_employees
+          group: Employees
+          summary: Retrieve list of employees with pagination.
+          description: 'This endpoint returns an array of employee records. Example: GET /employees?offset=0&limit=5.'
+          query: SELECT employee_id, first_name, last_name, email, department, salary, hire_date FROM GOCI.PUBLIC.employees ORDER BY employee_id LIMIT :limit OFFSET :offset;
+          is_array_result: true
+          params:
+            - name: offset
+              type: integer
+              location: query
+              required: false
+              default: 0
+            - name: limit
+              type: integer
+              location: query
+              required: false
+              default: 5
+        - http_method: GET
+          http_path: /employees/{id}
+          mcp_method: get_employee_by_id
+          group: Employees
+          summary: Retrieve a single employee by their ID.
+          description: 'This endpoint returns a single employee record based on the provided ID. Example: GET /employees/1 returns the employee with ID 1.'
+          query: SELECT employee_id, first_name, last_name, email, department, salary, hire_date FROM GOCI.PUBLIC.employees WHERE employee_id = :id LIMIT 1;
+          is_array_result: false
+          params:
+            - name: id
+              type: integer
+              location: path
+              required: true
+        - http_method: GET
+          http_path: /employees/total_count
+          mcp_method: get_employees_total_count
+          group: Employees
+          summary: Retrieve the total count of employees.
+          description: 'This endpoint returns the total number of employees. Example: GET /employees/total_count returns an object with total_count.'
+          query: SELECT count(*) AS total_count FROM GOCI.PUBLIC.employees;
+          is_array_result: false
+          params: []
+        - http_method: GET
+          http_path: /employees/by_department/{department}
+          mcp_method: get_employees_by_department
+          group: Employees
+          summary: Retrieve employees by department.
+          description: 'This endpoint returns employees filtered by department. Example: GET /employees/by_department/Sales.'
+          query: SELECT employee_id, first_name, last_name, email, department, salary, hire_date FROM GOCI.PUBLIC.employees WHERE department = :department ORDER BY employee_id;
+          is_array_result: true
+          params:
+            - name: department
+              type: string
+              location: path
+              required: true
+    - name: departments
+      columns:
+        - name: department_id
+          type: integer
+          primary_key: true
+          pii: false
+        - name: department_name
+          type: string
+          primary_key: false
+          pii: false
+        - name: location
+          type: string
+          primary_key: false
+          pii: false
+      endpoints:
+        - http_method: GET
+          http_path: /departments
+          mcp_method: list_departments
+          group: Departments
+          summary: Retrieve list of departments.
+          description: 'This endpoint returns an array of department records. Example: GET /departments.'
+          query: SELECT department_id, department_name, location FROM GOCI.PUBLIC.departments ORDER BY department_id;
+          is_array_result: true
+          params: []
+        - http_method: GET
+          http_path: /departments/{id}
+          mcp_method: get_department_by_id
+          group: Departments
+          summary: Retrieve a single department by its ID.
+          description: 'This endpoint returns a single department record based on the provided ID. Example: GET /departments/1 retrieves the department with ID 1.'
+          query: SELECT department_id, department_name, location FROM GOCI.PUBLIC.departments WHERE department_id = :id LIMIT 1;
+          is_array_result: false
+          params:
+            - name: id
+              type: integer
+              location: path
+              required: true
+        - http_method: GET
+          http_path: /departments/total_count
+          mcp_method: get_departments_total_count
+          group: Departments
+          summary: Retrieve the total count of departments.
+          description: 'This endpoint returns the total number of department records. Example: GET /departments/total_count returns an object with total_count.'
+          query: SELECT count(*) AS total_count FROM GOCI.PUBLIC.departments;
+          is_array_result: false
+          params: []
+plugins:
+    lru_cache:
+        max_size: 1024
+        ttl: 15s

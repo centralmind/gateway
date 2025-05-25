@@ -197,15 +197,38 @@ type APIParams struct {
 }
 
 type Database struct {
-	Type       string     `yaml:"type" json:"type,omitempty"`
-	Connection any        `yaml:"connection" json:"connection,omitempty"`
-	Endpoints  []Endpoint `yaml:"endpoints" json:"endpoints,omitempty"`
+	Type       string               `yaml:"type" json:"type,omitempty"`
+	Connection any                  `yaml:"connection" json:"connection,omitempty"`
+	Endpoints  []Endpoint           `yaml:"endpoints" json:"endpoints,omitempty"`
+	Tables     []TableWithEndpoints `yaml:"tables" json:"tables,omitempty"`
+}
+
+// GetAllEndpoints returns all endpoints from both database level and table level
+func (d Database) GetAllEndpoints() []Endpoint {
+	allEndpoints := make([]Endpoint, 0, len(d.Endpoints))
+	
+	// Add database-level endpoints
+	allEndpoints = append(allEndpoints, d.Endpoints...)
+	
+	// Add table-level endpoints
+	for _, table := range d.Tables {
+		allEndpoints = append(allEndpoints, table.Endpoints...)
+	}
+	
+	return allEndpoints
 }
 
 type Table struct {
 	Name     string         `yaml:"name" json:"name,omitempty"`
 	Columns  []ColumnSchema `yaml:"columns" json:"columns,omitempty"`
 	RowCount int            `yaml:"row_count" json:"row_count,omitempty"`
+}
+
+type TableWithEndpoints struct {
+	Name      string         `yaml:"name" json:"name,omitempty"`
+	Columns   []ColumnSchema `yaml:"columns" json:"columns,omitempty"`
+	RowCount  int            `yaml:"row_count" json:"row_count,omitempty"`
+	Endpoints []Endpoint     `yaml:"endpoints" json:"endpoints,omitempty"`
 }
 
 type ColumnSchema struct {

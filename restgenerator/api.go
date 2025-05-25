@@ -95,7 +95,8 @@ func (r *Rest) RegisterRoutes(mux *http.ServeMux, disableSwagger bool, rawMode b
 	}
 
 	d := gin.Default()
-	for _, endpoint := range r.Schema.Database.Endpoints {
+	allEndpoints := r.Schema.Database.GetAllEndpoints()
+	for _, endpoint := range allEndpoints {
 		d.Handle(endpoint.HTTPMethod, convertSwaggerToGin(r.prefix+endpoint.HTTPPath), r.Handler(endpoint))
 	}
 

@@ -1,8 +1,8 @@
 # (TODO) Replace with your snowflake config
-account: XXXXX-YYYY  
-user: TEST_READONLY
-password: password
-database: MY_COPY_DB
+account: YHFCEQW-VS84270
+user: GATEWAYCI
+password: gatewayCI406PM1
+database: GOCI
 schema: PUBLIC
 warehouse: COMPUTE_WH
 role: ACCOUNTADMIN

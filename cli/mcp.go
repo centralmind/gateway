@@ -60,8 +60,9 @@ optimized for AI agent interactions.`,
 			if rawMode {
 				srv.EnableRawProtocol()
 			}
-			if len(gw.Database.Endpoints) > 0 {
-				srv.SetTools(gw.Database.Endpoints)
+			allEndpoints := gw.Database.GetAllEndpoints()
+			if len(allEndpoints) > 0 {
+				srv.SetTools(allEndpoints)
 			}
 
 			return srv.ServeStdio().Listen(context.Background(), os.Stdin, os.Stdout)

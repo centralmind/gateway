@@ -2,13 +2,14 @@ package cli
 
 import (
 	"fmt"
-	"github.com/centralmind/gateway/connectors"
-	"github.com/centralmind/gateway/plugins"
 	"net/http"
 	"net/url"
 	"os"
 	"path"
 	"strings"
+
+	"github.com/centralmind/gateway/connectors"
+	"github.com/centralmind/gateway/plugins"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -94,7 +95,10 @@ Upon successful startup, the terminal will display URLs for both services.`,
 		a, err := restgenerator.New(*gw, prefix)
 
 		if err != nil {
-			return xerrors.Errorf("unable to init api: %w", err)
+			if strings.Contains(err.Error(), "unable to init connector") {
+				return xerrors.Errorf("Failed to initialize database connector.\n%w", err)
+			}
+			return xerrors.Errorf("Failed to initialize REST API generator: %w", err)
 		}
 
 		// Create the list of server addresses for API documentation and endpoints
@@ -135,8 +139,9 @@ Upon successful startup, the terminal will display URLs for both services.`,
 		if rawMode {
 			srv.EnableRawProtocol()
 		}
-		if len(gw.Database.Endpoints) > 0 {
-			srv.SetTools(gw.Database.Endpoints)
+		allEndpoints := gw.Database.GetAllEndpoints()
+		if len(allEndpoints) > 0 {
+			srv.SetTools(allEndpoints)
 		}
 		if !enableRestAPI && !enableMCP {
 			logrus.Fatal("At least one of protocol must be enabled, nothing to start")

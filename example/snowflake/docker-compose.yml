@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  gateway:
+    build:
+      context: ../..
+      dockerfile: Dockerfile.build
+      platforms:
+        - linux/amd64
+        - linux/arm64
+    command:
+      - start
+      - --config
+      - /app/config.yaml
+      - --addr
+      - ":8182"
+      - rest
+    ports:
+      - "8182:8182"
+    environment:
+      # Snowflake connection variables from connection.yaml
+      SNOWFLAKE_TEST_ACCOUNT: ${SNOWFLAKE_TEST_ACCOUNT:-YHFCEQW-VS84270}
+      SNOWFLAKE_TEST_USER: ${SNOWFLAKE_TEST_USER:-GATEWAYCI}
+      SNOWFLAKE_TEST_PASSWORD: ${SNOWFLAKE_TEST_PASSWORD:-gatewayCI406PM1}
+      SNOWFLAKE_TEST_DATABASE: ${SNOWFLAKE_TEST_DATABASE:-GOCI}
+      SNOWFLAKE_TEST_SCHEMA: ${SNOWFLAKE_TEST_SCHEMA:-PUBLIC}
+      SNOWFLAKE_TEST_WAREHOUSE: ${SNOWFLAKE_TEST_WAREHOUSE:-COMPUTE_WH}
+      SNOWFLAKE_TEST_ROLE: ${SNOWFLAKE_TEST_ROLE:-ACCOUNTADMIN}
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+      - ./connection.yaml:/app/connection.yaml:ro

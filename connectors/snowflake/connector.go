@@ -28,7 +28,16 @@ func init() {
 		}
 		db, err := sqlx.Open("snowflake", dsn)
 		if err != nil {
-			return nil, xerrors.Errorf("unable to open Snowflake db: %w", err)
+			// Extract the underlying error for better diagnosis
+			if strings.Contains(err.Error(), "account is empty") {
+				return nil, xerrors.Errorf(
+					"Snowflake account identifier is missing. "+
+						"Please specify either:\n"+
+						"  1. A complete connection string with account identifier (e.g., 'user:password@account/database/schema?warehouse=WAREHOUSE&role=ROLE'), or\n"+
+						"  2. Individual connection parameters including the 'account' field\n"+
+						"Original error: %w", err)
+			}
+			return nil, xerrors.Errorf("unable to open Snowflake database connection: %w", err)
 		}
 		return &Connector{
 			config: cfg,

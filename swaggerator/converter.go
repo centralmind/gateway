@@ -27,7 +27,6 @@ func Schema(schema model.Config, prefix string, addresses ...string) (*huma.Open
 	api.Info.Title = schema.API.Name
 	api.Info.Description = "Config that dynamically generates accessor for data"
 	api.Info.Version = schema.API.Version
-	api.Paths = make(map[string]*huma.PathItem)
 
 	connector, err := connectors.New(schema.Database.Type, schema.Database.Connection)
 	if err != nil {
@@ -64,7 +63,8 @@ func Schema(schema model.Config, prefix string, addresses ...string) (*huma.Open
 	}
 
 	// Iterate through tables and generate OpenAPI schemas
-	for _, endpoint := range schema.Database.Endpoints {
+	allEndpoints := schema.Database.GetAllEndpoints()
+	for _, endpoint := range allEndpoints {
 		cols, err := connector.InferQuery(context.Background(), endpoint.Query)
 		if err != nil {
 			logrus.Warnf("unable to infer query %s: %v", endpoint.Query, err)
@@ -174,6 +174,9 @@ func Schema(schema model.Config, prefix string, addresses ...string) (*huma.Open
 		httpPath := endpoint.HTTPPath
 		if prefix != "" {
 			httpPath = path.Join("/", prefix, httpPath)
+		}
+		if api.Paths == nil {
+			api.Paths = make(map[string]*huma.PathItem)
 		}
 		if _, ok := api.Paths[httpPath]; !ok {
 			api.Paths[httpPath] = &huma.PathItem{}
