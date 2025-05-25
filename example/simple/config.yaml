@@ -4,13 +4,7 @@ api:
   version: 1.0.0
 database:
   type: postgres
-  connection: |
-    hosts:
-      - localhost
-    user: postgres
-    password: password
-    database: mydb
-    port: 5432
+  connection: postgres://postgres:postgres@postgres/mydb?sslmode=disable
   tables:
     - name: gachi_teams
       columns:

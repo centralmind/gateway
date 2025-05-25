@@ -6,35 +6,42 @@ services:
     container_name: postgres
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
+      POSTGRES_PASSWORD: postgres
       POSTGRES_DB: mydb
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data_1:/var/lib/postgresql/data
       - ./csv:/var/lib/postgresql/csv
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql  # Mount the seed data script
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d mydb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   gateway:
-    build:
-      context: ../..
-      dockerfile: Dockerfile.build
-      platforms:
-        - linux/amd64
-        - linux/arm64
+    # build:
+    #   context: ../..
+    #   dockerfile: Dockerfile.build
+    #   platforms:
+    #     - linux/amd64
+    #     - linux/arm64
+    image: ghcr.io/centralmind/gateway:v0.2.14
     command:
       - start
       - --config
       - /usr/local/bin/config.yaml
       - --addr
       - ":8182"
-      - rest
+      # - rest
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     ports:
       - "8182:8182"
     volumes:
       - ./config.yaml:/usr/local/bin/config.yaml
 
 volumes:
-  postgres_data:
+  postgres_data_1:

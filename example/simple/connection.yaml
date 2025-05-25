@@ -1,7 +1,7 @@
 type: postgres
 hosts:
-  - localhost
+  - postgres
 user: postgres
-password: password
+password: postgres
 database: mydb
 port: 5432

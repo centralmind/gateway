@@ -26,6 +26,13 @@ This example demonstrates a basic setup of the Gateway API with a PostgreSQL dat
    - Gateway API: http://localhost:8182
    - PostgreSQL: localhost:5432
 
+```bash
+# Verify the functionality by running 
+curl -X 'GET' 'http://localhost:8182/raw/query?query=SELECT%201' 
+```
+
+Swagger will be avilable in http://localhost:8182/swagger/
+
 ## API Endpoints
 
 ### Teams Endpoints
