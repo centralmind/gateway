@@ -11,7 +11,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data_1:/var/lib/postgresql/data
+      - postgres_data_simple:/var/lib/postgresql/data
       - ./csv:/var/lib/postgresql/csv
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql  # Mount the seed data script
     healthcheck:
@@ -27,7 +27,7 @@ services:
     #   platforms:
     #     - linux/amd64
     #     - linux/arm64
-    image: ghcr.io/centralmind/gateway:v0.2.14
+    image: ghcr.io/centralmind/gateway:v0.2.15
     command:
       - start
       - --config
@@ -44,4 +44,4 @@ services:
       - ./config.yaml:/usr/local/bin/config.yaml
 
 volumes:
-  postgres_data_1:
+  postgres_data_simple:
