@@ -22,6 +22,11 @@ func (s *MCPServer) SetTools(tools []model.Endpoint) {
 	s.server.DeleteTools(names...)
 	for _, endpoint := range tools {
 		var opts []mcp.ToolOption
+		if endpoint.Description != "" {
+			opts = append(opts, mcp.WithDescription(endpoint.Description))
+		} else if endpoint.Summary != "" {
+			opts = append(opts, mcp.WithDescription(endpoint.Summary))
+		}
 		for _, col := range endpoint.Params {
 			if col.Required {
 				opts = append(opts, ArgumentOption(col, mcp.Required()))
