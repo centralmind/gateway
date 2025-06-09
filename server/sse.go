@@ -180,8 +180,8 @@ func (s *SSEServer) handleMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	if r.Method != http.MethodPost {
+		s.writeJSONRPCError(w, nil, mcp.INVALID_REQUEST, "Method not allowed")
 		return
 	}
 
