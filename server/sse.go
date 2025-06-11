@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/centralmind/gateway/cors"
 	"github.com/centralmind/gateway/xcontext"
 	"net/http"
 	"net/http/httptest"
@@ -87,10 +88,8 @@ func (s *SSEServer) handleSSE(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-
-	if r.Method == http.MethodOptions {
-		w.WriteHeader(http.StatusOK)
+	cors.ApplyCORSHeaders(w, "GET")
+	if cors.HandlePreflight(w, r) {
 		return
 	}
 
