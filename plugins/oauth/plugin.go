@@ -150,7 +150,7 @@ func (p *Plugin) RegisterRoutes(mux *http.ServeMux) {
 	}
 
 	getPath := func(rawURL string) string {
-		if u, err := url.Parse(rawURL); err == nil && u.Path != "" {
+		if u, urlParseErr := url.Parse(rawURL); urlParseErr == nil && u.Path != "" {
 			return u.Path
 		}
 		return rawURL

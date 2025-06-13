@@ -147,16 +147,16 @@ func (c *Config) WithDefaults() {
 		c.TokenHeader = "Authorization"
 	}
 	if c.AuthURL == "" {
-		c.AuthURL = "/oauth/authorize"
+		c.AuthURL = "/oauth/authorize/"
 	}
 	if c.CallbackURL == "" {
-		c.CallbackURL = "/oauth/callback"
+		c.CallbackURL = "/oauth/callback/"
 	}
 	if c.TokenURL == "" {
-		c.TokenURL = "/oauth/token"
+		c.TokenURL = "/oauth/token/"
 	}
 	if c.RegisterURL == "" {
-		c.RegisterURL = "/oauth/register"
+		c.RegisterURL = "/oauth/register/"
 	}
 	if c.ClientRegistration.ClientSecretExpirySeconds == 0 {
 		c.ClientRegistration.ClientSecretExpirySeconds = 30 * 24 * 60 * 60 // 30 days
