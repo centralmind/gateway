@@ -53,15 +53,14 @@ Enrich your AI agents with data from your database using remote function/tool ca
 - ⚡ **Automatic API Generation** – Creates APIs automatically using LLM based on table schema and sampled data
 - 🗄️ **Structured Database Support** – Supports <a href="https://docs.centralmind.ai/connectors/postgres/">PostgreSQL</a>, <a href="https://docs.centralmind.ai/connectors/mysql/">MySQL</a>, <a href="https://docs.centralmind.ai/connectors/clickhouse/">ClickHouse</a>, <a href="https://docs.centralmind.ai/connectors/snowflake/">Snowflake</a>, <a href="https://docs.centralmind.ai/connectors/mssql/">MSSQL</a>, <a href="https://docs.centralmind.ai/connectors/bigquery/">BigQuery</a>, <a href="https://docs.centralmind.ai/connectors/oracle/">Oracle Database</a>, <a href="https://docs.centralmind.ai/connectors/sqlite/">SQLite</a>, <a href="https://docs.centralmind.ai/connectors/sqlite/">ElasticSearch</a>
 - 🌍 **Multiple Protocol Support** – Provides APIs as REST or MCP Server including SSE mode
-- 📜 **API Documentation** – Auto-generated Swagger documentation and OpenAPI 3.1.0 specification
-- 🔒 **PII Protection** – Implements <a href="https://docs.centralmind.ai/plugins/pii_remover/">regex plugin</a> or <a href="https://docs.centralmind.ai/plugins/presidio_anonymizer/">Microsoft Presidio plugin</a> for PII and sensitive data redaction
-- ⚡ **Flexible Configuration** – Easily extensible via YAML configuration and plugin system
-- 🐳 **Deployment Options** – Run as a binary or Docker container with ready-to-use <a href="https://docs.centralmind.ai/helm/gateway/">Helm chart</a>
-- 🤖 **Multiple AI Providers Support** - Support for [OpenAI](https://docs.centralmind.ai/providers/openai), [Anthropic](https://docs.centralmind.ai/providers/anthropic), [Amazon Bedrock](https://docs.centralmind.ai/providers/bedrock), [Google Gemini](https://docs.centralmind.ai/providers/gemini) & [Google VertexAI](https://docs.centralmind.ai/providers/anthropic-vertexai)
-- 📦 **Local & On-Premises** – Support for <a href="https://docs.centralmind.ai/providers/local-models/">self-hosted LLMs</a> through configurable AI endpoints and models
-- 🔑 **Row-Level Security (RLS)** – Fine-grained data access control using <a href="https://docs.centralmind.ai/plugins/lua_rls/">Lua scripts</a>
 - 🔐 **Authentication Options** – Built-in support for <a href="https://docs.centralmind.ai/plugins/api_keys/">API keys</a> and <a href="https://docs.centralmind.ai/plugins/oauth/">OAuth</a>
+- 🔒 **PII Protection** – Implements <a href="https://docs.centralmind.ai/plugins/pii_remover/">regex plugin</a> or <a href="https://docs.centralmind.ai/plugins/presidio_anonymizer/">Microsoft Presidio plugin</a> for PII and sensitive data redaction
 - 👀 **Comprehensive Monitoring** – Integration with <a href="https://docs.centralmind.ai/plugins/otel/">OpenTelemetry (OTel)</a> for request tracking and audit trails
+- 📦 **Local & On-Premises** – Support for <a href="https://docs.centralmind.ai/providers/local-models/">self-hosted LLMs</a> through configurable AI endpoints and models
+- 🤖 **Multiple AI Providers Support** - Support for [OpenAI](https://docs.centralmind.ai/providers/openai), [Anthropic](https://docs.centralmind.ai/providers/anthropic), [Amazon Bedrock](https://docs.centralmind.ai/providers/bedrock), [Google Gemini](https://docs.centralmind.ai/providers/gemini) & [Google VertexAI](https://docs.centralmind.ai/providers/anthropic-vertexai)
+- ⚡ **Flexible Configuration** – Easily extensible via YAML configuration and plugin system
+- 📜 **API Documentation** – Auto-generated Swagger documentation and OpenAPI 3.1.0 specification
+- 🔑 **Row-Level Security (RLS)** – Fine-grained data access control using <a href="https://docs.centralmind.ai/plugins/lua_rls/">Lua scripts</a>
 - 🏎️ **Performance Optimization** – Implements time-based and <a href="https://docs.centralmind.ai/plugins/lru_cache/">LRU caching</a> strategies
 
 ## How it Works
@@ -129,15 +128,14 @@ go build .
 Gateway uses LLM models to generate your API configuration. Follow these steps:
 
 
-1. Choose one of our supported AI providers:
-
+Choose one of our supported AI providers:
 - [OpenAI](https://docs.centralmind.ai/providers/openai) and all OpenAI-compatible providers
 - [Anthropic](https://docs.centralmind.ai/providers/anthropic)
 - [Amazon Bedrock](https://docs.centralmind.ai/providers/bedrock)
 - [Google Vertex AI (Anthropic)](https://docs.centralmind.ai/providers/anthropic-vertexai)
 - [Google Gemini](https://docs.centralmind.ai/providers/gemini)
 
-[Google Gemini](https://docs.centralmind.ai/providers/gemini) provides a generous **free tier**. You can obtain an API key by visiting Google AI Studio:
+Google Gemini provides a generous **free tier**. You can obtain an API key by visiting Google AI Studio:
 
 - [Google AI Studio](https://aistudio.google.com/apikey)
 
@@ -243,17 +241,14 @@ It is always subject to change, and the roadmap will highly depend on user feedb
 we are planning the following features:
 
 #### Database and Connectivity
-
-- 🗄️ **Extended Database Integrations** - Redshift, S3 (Iceberg and Parquet), Oracle DB, Microsoft SQL Server, Elasticsearch
+- 🗄️ **Extended Database Integrations** - Databricks, Redshift, S3 (Iceberg and Parquet), Oracle DB, Microsoft SQL Server, Elasticsearch
 - 🔑 **SSH tunneling** - ability to use jumphost or ssh bastion to tunnel connections
 
 #### Enhanced Functionality
-
 - 🔍 **Advanced Query Capabilities** - Complex filtering syntax and Aggregation functions as parameters
 - 🔐 **Enhanced MCP Security** - API key and OAuth authentication
 
 #### Platform Improvements
-
 - 📦 **Schema Management** - Automated schema evolution and API versioning
 - 🚦 **Advanced Traffic Management** - Intelligent rate limiting, Request throttling
 - ✍️ **Write Operations Support** - Insert, Update operations
