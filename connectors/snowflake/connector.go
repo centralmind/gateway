@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	_ "embed"
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/centralmind/gateway/connectors"
@@ -22,6 +23,11 @@ var docString string
 
 func init() {
 	connectors.Register(func(cfg Config) (connectors.Connector, error) {
+		// Parse connection string to extract database, schema, and other parameters
+		if err := cfg.parseConnectionString(); err != nil {
+			return nil, xerrors.Errorf("unable to parse Snowflake connection string: %w", err)
+		}
+
 		dsn, err := cfg.MakeDSN()
 		if err != nil {
 			return nil, xerrors.Errorf("unable to prepare Snowflake config: %w", err)
@@ -88,10 +94,72 @@ func (c Config) ExtraPrompt() []string {
 	return []string{}
 }
 
+// parseConnectionString parses the connection string and fills in missing config fields
+func (c *Config) parseConnectionString() error {
+	if c.ConnString == "" {
+		return nil // Nothing to parse
+	}
+
+	// Parse the connection string as URL
+	// Expected format: snowflake://user:password@account/database/schema?warehouse=WAREHOUSE&role=ROLE
+	connString := c.ConnString
+	if !strings.HasPrefix(connString, "snowflake://") {
+		connString = "snowflake://" + connString
+	}
+
+	parsedURL, err := url.Parse(connString)
+	if err != nil {
+		return xerrors.Errorf("invalid connection string format: %w", err)
+	}
+
+	// Extract user and password if not already set
+	if parsedURL.User != nil {
+		if c.User == "" {
+			c.User = parsedURL.User.Username()
+		}
+		if password, ok := parsedURL.User.Password(); ok && c.Password == "" {
+			c.Password = password
+		}
+	}
+
+	// Extract account (host) if not already set
+	if c.Account == "" && parsedURL.Host != "" {
+		c.Account = parsedURL.Host
+	}
+
+	// Extract database and schema from path
+	// Path format: /database/schema
+	if parsedURL.Path != "" {
+		pathParts := strings.Split(strings.Trim(parsedURL.Path, "/"), "/")
+		if len(pathParts) >= 1 && pathParts[0] != "" && c.Database == "" {
+			c.Database = pathParts[0]
+		}
+		if len(pathParts) >= 2 && pathParts[1] != "" && c.Schema == "" {
+			c.Schema = pathParts[1]
+		}
+	}
+
+	// Extract query parameters (warehouse, role, etc.)
+	queryParams := parsedURL.Query()
+	if c.Warehouse == "" && queryParams.Get("warehouse") != "" {
+		c.Warehouse = queryParams.Get("warehouse")
+	}
+	if c.Role == "" && queryParams.Get("role") != "" {
+		c.Role = queryParams.Get("role")
+	}
+
+	return nil
+}
+
 func (c Config) MakeDSN() (string, error) {
 	// If connection string is provided, use it directly
 	if c.ConnString != "" {
-		return c.ConnString, nil
+		// Remove snowflake:// prefix if present, as the driver expects connection string without it
+		connString := c.ConnString
+		if strings.HasPrefix(connString, "snowflake://") {
+			connString = strings.TrimPrefix(connString, "snowflake://")
+		}
+		return connString, nil
 	}
 
 	// Otherwise, build the DSN from individual fields
