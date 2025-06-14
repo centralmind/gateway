@@ -80,18 +80,7 @@ chmod +x gateway
 </details>
 
 
-### 2. Create a `connection.yaml` configuration file:
-```bash
-echo 'type: postgres
-hosts:
-  - localhost
-user: "your-database-user"
-password: "your-database-password"
-database: "your-database-name"
-port: 5432' > connection.yaml
-````
-
-### 3. Choose one of our supported AI providers:
+### 2. Choose one of our supported AI providers:
 
 - [OpenAI](/providers/openai) and all OpenAI-compatible providers
 - [Anthropic](/providers/anthropic)
@@ -111,12 +100,12 @@ Configure AI provider authorization. For Google Gemini, set an API key.
 export GEMINI_API_KEY='yourkey'
 ```
 
-### 4. Run the discovery process with AI-powered API generation:
+### 3. Run the discovery process with AI-powered API generation:
 
 ```bash
 ./gateway discover \
   --ai-provider gemini \
-  --config connection.yaml \
+  --connection-string "postgresql://my_user:my_pass@localhost:5432/mydb" \
   --prompt "Develop an API that enables a chatbot to retrieve information about data. \
 Try to place yourself as analyst and think what kind of data you will require, \
 based on that come up with useful API methods for that"
@@ -125,7 +114,7 @@ based on that come up with useful API methods for that"
 ### 4. Start the REST server:
 
 ```bash
-./gateway --config gateway.yaml start rest
+./gateway --config gateway.yaml start
 ```
 
 ## Verification

@@ -31,7 +31,7 @@ Below is a basic example of how to use the provider with a connection configurat
 ```bash
 ./gateway discover \
   --ai-provider openai \
-  --config connection.yaml
+  --connection-string "postgresql://my_user:my_pass@localhost:5432/mydb"
 ```
 
 ## Endpoint Configuration
@@ -47,7 +47,7 @@ Example with a custom endpoint:
 export OPENAI_ENDPOINT="https://custom-openai-endpoint.example.com"
 ./gateway discover \
   --ai-provider openai \
-  --config connection.yaml
+  --connection-string "postgresql://my_user:my_pass@localhost:5432/mydb"
 ```
 
 ## Model Selection
@@ -64,13 +64,13 @@ Examples:
 ./gateway discover \
   --ai-provider openai \
   --ai-model o3-mini \
-  --config connection.yaml
+  --connection-string "postgresql://my_user:my_pass@localhost:5432/mydb"
 
 # Or via environment variable
 export OPENAI_MODEL_ID=o3-mini
 ./gateway discover \
   --ai-provider openai \
-  --config connection.yaml
+  --connection-string "postgresql://my_user:my_pass@localhost:5432/mydb"
 ```
 
 ## Advanced Configuration
@@ -83,7 +83,7 @@ Enable OpenAI's high reasoning effort for complex tasks:
 ./gateway discover \
   --ai-provider openai \
   --ai-reasoning=true \
-  --config connection.yaml
+  --connection-string "postgresql://my_user:my_pass@localhost:5432/mydb"
 ```
 
 When reasoning mode is enabled, the provider sets the `reasoning_effort` parameter to "high".
@@ -96,7 +96,7 @@ Control the maximum token count in responses:
 ./gateway discover \
   --ai-provider openai \
   --ai-max-tokens 8192 \
-  --config connection.yaml
+  --connection-string "postgresql://my_user:my_pass@localhost:5432/mydb"
 ```
 
 If not specified, the default maximum token count is 100,000 tokens.
@@ -109,7 +109,7 @@ Adjust the randomness of responses with the temperature parameter:
 ./gateway discover \
   --ai-provider openai \
   --ai-temperature 0.7 \
-  --config connection.yaml
+  --connection-string "postgresql://my_user:my_pass@localhost:5432/mydb"
 ```
 
 Lower values produce more deterministic outputs, while higher values increase creativity and randomness.
