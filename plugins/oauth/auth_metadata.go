@@ -15,19 +15,26 @@ type Metadata struct {
 }
 
 func NewMetadata(issuer url.URL, authorizationEndpoint, tokenEndpoint string, registrationEndpoint string) Metadata {
+	buildURL := func(endpoint string) string {
+		if u, err := url.Parse(endpoint); err == nil && u.IsAbs() {
+			return endpoint
+		}
+		return (&url.URL{Scheme: issuer.Scheme, Host: issuer.Host, Path: endpoint}).String()
+	}
+
 	metadata := Metadata{
 		Issuer:                            issuer.String(),
-		AuthorizationEndpoint:             (&url.URL{Scheme: issuer.Scheme, Host: issuer.Host, Path: authorizationEndpoint}).String(),
+		AuthorizationEndpoint:             buildURL(authorizationEndpoint),
 		ResponseTypesSupported:            []string{"code"},
 		CodeChallengeMethodsSupported:     []string{"S256"},
-		TokenEndpoint:                     (&url.URL{Scheme: issuer.Scheme, Host: issuer.Host, Path: tokenEndpoint}).String(),
+		TokenEndpoint:                     buildURL(tokenEndpoint),
 		TokenEndpointAuthMethodsSupported: []string{"client_secret_post"},
 		GrantTypesSupported:               []string{"authorization_code", "refresh_token"},
 	}
 
 	// Add registration endpoint if provided
 	if registrationEndpoint != "" {
-		metadata.RegistrationEndpoint = (&url.URL{Scheme: issuer.Scheme, Host: issuer.Host, Path: registrationEndpoint}).String()
+		metadata.RegistrationEndpoint = buildURL(registrationEndpoint)
 	}
 
 	return metadata

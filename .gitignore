@@ -365,3 +365,4 @@ $RECYCLE.BIN/
 
 # Local configs
 *.secret.yaml
+.aider*

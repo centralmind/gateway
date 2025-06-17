@@ -202,6 +202,8 @@ oauth:
   client_id: "xxx"
   client_secret: "xxx"
   user_info_url: "https://your-tenant.auth0.com/userinfo"
+  provider_auth_url: "https://your-tenant.auth0.com/authorize"
+  provider_token_url: "https://your-tenant.auth0.com/oauth/token"
   scopes:
     - "openid"
     - "profile"
