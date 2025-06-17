@@ -148,9 +148,17 @@ func (p *Plugin) RegisterRoutes(mux *http.ServeMux) {
 	if err != nil {
 		return
 	}
+
+	getPath := func(rawURL string) string {
+		if u, urlParseErr := url.Parse(rawURL); urlParseErr == nil && u.Path != "" {
+			return u.Path
+		}
+		return rawURL
+	}
+
 	// Register HTTP handlers with CORS middleware
-	mux.Handle(p.config.AuthURL, CORSMiddleware(http.HandlerFunc(p.HandleAuthorize)))
-	mux.Handle(p.config.CallbackURL, CORSMiddleware(http.HandlerFunc(p.HandleCallback)))
+	mux.Handle(getPath(p.config.AuthURL), CORSMiddleware(http.HandlerFunc(p.HandleAuthorize)))
+	mux.Handle(getPath(p.config.CallbackURL), CORSMiddleware(http.HandlerFunc(p.HandleCallback)))
 
 	// Set up and register the token endpoint
 	tokenPath := p.config.TokenURL // Use the configured token URL
@@ -160,7 +168,7 @@ func (p *Plugin) RegisterRoutes(mux *http.ServeMux) {
 
 	// Register the token handler with CORS middleware
 	tokenHandler := http.HandlerFunc(p.HandleToken)
-	mux.Handle(tokenPath, CORSMiddleware(tokenHandler))
+	mux.Handle(getPath(tokenPath), CORSMiddleware(tokenHandler))
 
 	// Register dynamic client registration endpoint if enabled
 	if p.config.ClientRegistration.Enabled {
@@ -169,7 +177,7 @@ func (p *Plugin) RegisterRoutes(mux *http.ServeMux) {
 
 		// Register the handler with CORS middleware
 		registrationHandler := http.HandlerFunc(p.HandleRegister)
-		mux.Handle(p.config.RegisterURL, CORSMiddleware(registrationHandler))
+		mux.Handle(getPath(p.config.RegisterURL), CORSMiddleware(registrationHandler))
 	}
 
 	// Register the well-known endpoint with CORS middleware

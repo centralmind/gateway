@@ -1,6 +1,7 @@
 <div align="center">
 
-![Build Binaries](https://github.com/centralmind/gateway/actions/workflows/build-binaries.yml/badge.svg) &nbsp; <a href="https://discord.gg/XFhaUG4F5x"><img src="https://dcbadge.limes.pink/api/server/https://discord.gg/XFhaUG4F5x" height="20"></a> &nbsp;&nbsp;<a href="https://t.me/+TM3T1SikjzA4ZWVi"><img src="https://img.shields.io/badge/telegram-%E2%9D%A4%EF%B8%8F-252850?style=plastic&logo=telegram" height=20></a> &nbsp;&nbsp; <a href="https://docs.centralmind.ai"><img src="https://img.shields.io/badge/Full%20Documentation-blue?style=for-the-badge&logo=rocket&logoColor=white" height="20"></a>
+![Build Binaries](https://github.com/centralmind/gateway/actions/workflows/build-binaries.yml/badge.svg) &nbsp; <a href="https://discord.gg/XFhaUG4F5x"><img src="https://dcbadge.limes.pink/api/server/https://discord.gg/XFhaUG4F5x" height="20"></a> &nbsp;&nbsp;<a href="https://t.me/+TM3T1SikjzA4ZWVi"><img src="https://img.shields.io/badge/telegram-%E2%9D%A4%EF%B8%8F-252850?style=plastic&logo=telegram" height=20></a> &nbsp;&nbsp; <a href="https://docs.centralmind.ai"><img src="https://img.shields.io/badge/Full%20Documentation-blue?style=for-the-badge&logo=rocket&logoColor=white" height="20"></a>&nbsp;&nbsp; <a href="https://cursor.com/install-mcp?name=CentralMind%20Database%20Gateway&config=eyJjb21tYW5kIjoiZG9ja2VyIHJ1biAtaSAtLXBsYXRmb3JtIGxpbnV4L2FtZDY0IGdoY3IuaW8vY2VudHJhbG1pbmQvZ2F0ZXdheTp2MC4yLjE4IC0tY29ubmVjdGlvbi1zdHJpbmcgcG9zdGdyZXNxbDovL215X3VzZXI6bXlfcGFzc0Bsb2NhbGhvc3Q6NTQzMi9teWRiIHN0YXJ0IHN0ZGlvIn0%3D"><img height="21" src="https://cursor.com/deeplink/mcp-install-dark.svg"></a>
+
 
 </div>
 
@@ -15,7 +16,7 @@ Simple way to expose your database to AI-Agent via MCP or OpenAPI 3.1 protocols.
 
 ```bash
 docker run --platform linux/amd64 -p 9090:9090 \
-  ghcr.io/centralmind/gateway:v0.2.14 start \
+  ghcr.io/centralmind/gateway:v0.2.18 start \
   --connection-string "postgres://db-user:db-password@db-host/db-name?sslmode=require"
 ```
 
