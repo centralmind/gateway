@@ -57,7 +57,7 @@ export OPENAI_API_KEY='yourkey'
 ```bash
 ./gateway discover \
   --ai-provider openai \
-  --config connection.yaml
+  --connection-string "postgresql://my_user:my_pass@localhost:5432/mydb"
 ```
 
 ## Additional Configuration Options
@@ -72,5 +72,5 @@ You can further customize the AI behavior with these optional parameters:
   --ai-max-tokens 8192 \
   --ai-temperature 1.0 \
   --ai-reasoning=true \
-  --config connection.yaml
+  --connection-string "postgresql://my_user:my_pass@localhost:5432/mydb"
 ```

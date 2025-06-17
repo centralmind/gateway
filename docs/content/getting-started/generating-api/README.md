@@ -21,21 +21,6 @@ Gateway provides a convenient command for automatically discovering and generati
 ./gateway --help
 ```
 
-### Setting up Database Connection
-
-First, create a connection configuration file (e.g., `connection.yaml`) with your database credentials:
-
-```yaml
-# Example connection.yaml
-type: postgres
-hosts:
-  - localhost
-user: postgres
-password: mysecretpassword
-database: sampledb
-port: 5432
-```
-
 ### Choosing one of our supported AI providers:
 
 - [OpenAI](/providers/openai) and all OpenAI-compatible providers
@@ -63,7 +48,7 @@ Use the following command to generate an API with AI assistance:
 ```bash
 ./gateway discover \
   --ai-provider gemini \
-  --config connection.yaml \
+  --connection-string "postgresql://my_user:my_pass@localhost:5432/mydb" \
   --prompt "Develop an API that enables a chatbot to retrieve information about data. \
 Try to place yourself as analyst and think what kind of data you will require, \
 based on that come up with useful API methods for that"
@@ -73,7 +58,7 @@ based on that come up with useful API methods for that"
 
 - `discover`: Activates the discovery mechanism to analyze your database using AI
 - `--ai-provider`: Supported [AI Provider](/providers)
-- `--config connection.yaml`: Path to the database connection configuration file
+- `--connection-string`: Connection string to the database format: `[database_type]://[user]:[password]@[host][:port][/dbname]`
 - `--tables`: Specify which tables to include in API generation (can accept comma-separated list, eg "orders,sales,customers")
 - `--prompt "..."`: Customizes the AI's approach to generating the API based on your specific needs
 

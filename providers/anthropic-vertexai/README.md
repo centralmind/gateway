@@ -51,7 +51,7 @@ Below is a basic example of how to use the provider with Vertex AI:
   --ai-provider anthropic-vertexai \
   --vertexai-region your-gcp-region \
   --vertexai-project your-gcp-project-id \
-  --config connection.yaml
+  --connection-string "postgresql://my_user:my_pass@localhost:5432/mydb"
 ```
 
 ## Project and Region Configuration
@@ -69,7 +69,7 @@ Example with explicit project and region:
   --ai-provider anthropic-vertexai \
   --vertexai-project your-gcp-project-id \
   --vertexai-region us-central1 \
-  --config connection.yaml
+  --connection-string "postgresql://my_user:my_pass@localhost:5432/mydb"
 ```
 
 Alternatively, using environment variables:
@@ -79,7 +79,7 @@ export ANTHROPIC_VERTEXAI_PROJECT="your-gcp-project-id"
 export ANTHROPIC_VERTEXAI_REGION="us-central1"
 ./gateway discover \
   --ai-provider anthropic-vertexai \
-  --config connection.yaml
+  --connection-string "postgresql://my_user:my_pass@localhost:5432/mydb"
 ```
 
 ## Model Selection
@@ -98,13 +98,13 @@ Examples:
 ./gateway discover \
   --ai-provider anthropic-vertexai \
   --ai-model claude-3-7-sonnet@20250219 \
-  --config connection.yaml
+  --connection-string "postgresql://my_user:my_pass@localhost:5432/mydb"
 
 # Or via environment variable
 export ANTHROPIC_MODEL_ID=claude-3-7-sonnet@20250219
 ./gateway discover \
   --ai-provider anthropic-vertexai \
-  --config connection.yaml
+  --connection-string "postgresql://my_user:my_pass@localhost:5432/mydb"
 ```
 
 ## Advanced Configuration
@@ -117,7 +117,7 @@ Enable Claude's "thinking" mode for complex reasoning tasks:
 ./gateway discover \
   --ai-provider anthropic-vertexai \
   --ai-reasoning=true \
-  --config connection.yaml
+  --connection-string "postgresql://my_user:my_pass@localhost:5432/mydb"
 ```
 
 When reasoning mode is enabled, the provider:
@@ -134,7 +134,7 @@ Control the maximum token count in responses:
 ./gateway discover \
   --ai-provider anthropic-vertexai \
   --ai-max-tokens 8192 \
-  --config connection.yaml
+  --connection-string "postgresql://my_user:my_pass@localhost:5432/mydb"
 ```
 
 If not specified, the default maximum token count is 64000 tokens.
@@ -147,7 +147,7 @@ Adjust the randomness of responses with the temperature parameter:
 ./gateway discover \
   --ai-provider anthropic-vertexai \
   --ai-temperature 0.5 \
-  --config connection.yaml
+  --connection-string "postgresql://my_user:my_pass@localhost:5432/mydb"
 ```
 
 Lower values produce more deterministic outputs, while higher values increase creativity and randomness.

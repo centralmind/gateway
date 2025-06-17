@@ -35,7 +35,7 @@ Below is a basic example of how to use the provider with a connection configurat
 ```bash
 ./gateway discover \
   --ai-provider gemini \
-  --config connection.yaml
+  ---connection-string "postgresql://my_user:my_pass@localhost:5432/mydb"
 ```
 
 ## Model Selection
@@ -52,13 +52,13 @@ Examples:
 ./gateway discover \
   --ai-provider gemini \
   --ai-model gemini-2.0-flash-thinking-exp \
-  --config connection.yaml
+  --connection-string "postgresql://my_user:my_pass@localhost:5432/mydb"
 
 # Or via environment variable
 export GEMINI_MODEL_ID=gemini-2.0-flash-thinking-exp
 ./gateway discover \
   --ai-provider gemini \
-  --config connection.yaml
+  --connection-string "postgresql://my_user:my_pass@localhost:5432/mydb"
 ```
 
 ## Advanced Configuration
@@ -71,7 +71,7 @@ Control the maximum token count in responses:
 ./gateway discover \
   --ai-provider gemini \
   --ai-max-tokens 8192 \
-  --config connection.yaml
+  --connection-string "postgresql://my_user:my_pass@localhost:5432/mydb"
 ```
 
 If not specified, the default maximum token count is 100,000 tokens.
@@ -84,7 +84,7 @@ Adjust the randomness of responses with the temperature parameter:
 ./gateway discover \
   --ai-provider gemini \
   --ai-temperature 0.7 \
-  --config connection.yaml
+  --connection-string "postgresql://my_user:my_pass@localhost:5432/mydb"
 ```
 
 Lower values produce more deterministic outputs, while higher values increase creativity and randomness.

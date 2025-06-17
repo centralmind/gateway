@@ -41,7 +41,7 @@ Below is a basic example of how to use the provider with a connection configurat
 ```bash
 ./gateway discover \
   --ai-provider bedrock \
-  --config connection.yaml
+  --connection-string "postgresql://my_user:my_pass@localhost:5432/mydb"
 ```
 
 ## Region Configuration
@@ -59,7 +59,7 @@ Example with an explicit region:
 ./gateway discover \
   --ai-provider bedrock \
   --bedrock-region us-west-2 \
-  --config connection.yaml
+  --connection-string "postgresql://my_user:my_pass@localhost:5432/mydb"
 ```
 
 ## Model Selection
@@ -76,13 +76,13 @@ Examples:
 ./gateway discover \
   --ai-provider bedrock \
   --ai-model us.anthropic.claude-3-7-sonnet-20250219-v1:0 \
-  --config connection.yaml
+  --connection-string "postgresql://my_user:my_pass@localhost:5432/mydb"
 
 # Or via environment variable
 export BEDROCK_MODEL_ID=us.anthropic.claude-3-7-sonnet-20250219-v1:0
 ./gateway discover \
   --ai-provider bedrock \
-  --config connection.yaml
+  --connection-string "postgresql://my_user:my_pass@localhost:5432/mydb"
 ```
 
 ## Advanced Configuration
@@ -95,7 +95,7 @@ Enable Claude's "thinking" mode for complex reasoning tasks:
 ./gateway discover \
   --ai-provider bedrock \
   --ai-reasoning=true \
-  --config connection.yaml
+  --connection-string "postgresql://my_user:my_pass@localhost:5432/mydb"
 ```
 
 When reasoning mode is enabled, the provider:
@@ -112,7 +112,7 @@ Control the maximum token count in responses:
 ./gateway discover \
   --ai-provider bedrock \
   --ai-max-tokens 8192 \
-  --config connection.yaml
+  --connection-string "postgresql://my_user:my_pass@localhost:5432/mydb"
 ```
 
 If not specified, the default maximum token count is 64000 tokens.
@@ -125,7 +125,7 @@ Adjust the randomness of responses with the temperature parameter:
 ./gateway discover \
   --ai-provider bedrock \
   --ai-temperature 0.5 \
-  --config connection.yaml
+  --connection-string "postgresql://my_user:my_pass@localhost:5432/mydb"
 ```
 
 Lower values produce more deterministic outputs, while higher values increase creativity and randomness.
