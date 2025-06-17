@@ -247,6 +247,7 @@ we are planning the following features:
 
 #### Enhanced Functionality
 - 🔍 **Advanced Query Capabilities** - Complex filtering syntax and Aggregation functions as parameters
+- 🔐 **Enhanced MCP Security** - API key and OAuth authentication
 
 #### Platform Improvements
 - 📦 **Schema Management** - Automated schema evolution and API versioning
