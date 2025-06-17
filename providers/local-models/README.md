@@ -41,7 +41,7 @@ This guide explains how to set up and use locally running models with Gateway us
 ```bash
 gateway discover \
   --ai-endpoint "http://localhost:1234/v1" \
-  --config connection.yaml \
+  --connection-string "postgresql://my_user:my_pass@localhost:5432/mydb" \
   --ai-model "llama3-8b" \
   --prompt "Develop an API that enables a chatbot to retrieve information about data. \
 Try to place yourself as analyst and think what kind of data you will require, \
