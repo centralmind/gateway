@@ -253,3 +253,9 @@ we are planning the following features:
 - 📦 **Schema Management** - Automated schema evolution and API versioning
 - 🚦 **Advanced Traffic Management** - Intelligent rate limiting, Request throttling
 - ✍️ **Write Operations Support** - Insert, Update operations
+
+## Database Gateway in MCP Registries  
+- https://mcpreview.com/mcp-servers/centralmind/gateway
+- https://mcp.so/server/gateway/centralmind
+- https://smithery.ai/server/@centralmind/gateway
+- https://www.pulsemcp.com/servers/centralmind-database-gateway
