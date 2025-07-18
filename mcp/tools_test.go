@@ -142,3 +142,24 @@ func TestUnmarshalToolWithoutRawSchema(t *testing.T) {
 	assert.Empty(t, toolUnmarshalled.InputSchema.Required)
 	assert.Empty(t, toolUnmarshalled.RawInputSchema)
 }
+
+func TestMarshalToolWithoutInputSchemaProperties(t *testing.T) {
+	tool := NewTool("empty-input-schema-tool",
+		WithDescription("A tool with no input schema properties"),
+	)
+
+	data, err := json.Marshal(tool)
+	assert.Nil(t, err)
+
+	expected := json.RawMessage(`{
+  "description": "A tool with no input schema properties",
+  "inputSchema": {
+    "type": "object",
+    "properties": {}
+  },
+  "name": "empty-input-schema-tool"
+}
+`)
+
+	assert.JSONEq(t, string(expected), string(data))
+}
